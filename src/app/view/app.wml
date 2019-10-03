@@ -1,0 +1,38 @@
+{% import (MainLayout) from "@quenk/wml-widgets/lib/layout/main" %}
+{% import (
+  GridLayout,
+  Row,
+  Column
+  ) from "@quenk/wml-widgets/lib/layout/grid" %}
+{% import (DataTable) from "@quenk/wml-widgets/lib/data/table" %}
+
+{% import (Testrun) from "../" %}
+
+{% view TestrunView (Testrun) %}
+<MainLayout>
+
+  <GridLayout>
+
+    <Row>
+
+      <Column>
+
+        <DataTable ww={{@values.table}} />
+
+      </Column>
+
+    </Row>
+
+      <Row>
+
+        <Column>
+
+          {{@values.results.content}}
+
+        </Column>
+
+      </Row>
+
+  </GridLayout>
+
+</MainLayout>

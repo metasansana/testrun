@@ -1,0 +1,33 @@
+{
+  "name": "testrun",
+  "version": "0.0.1",
+  "description": "Interface for running mocha tests files against a browser side app.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Lasana Murray <info@quenk.com> (http://quenk.com)",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@quenk/noni": "^1.33.0"
+  },
+  "devDependencies": {
+    "@quenk/test": "^2.1.2",
+    "@quenk/wml": "^2.2.0",
+    "@quenk/wml-widgets": "^1.23.0",
+    "@types/deep-equal": "^1.0.1",
+    "@types/json-stringify-safe": "^5.0.0",
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.7.8",
+    "browserify": "^16.5.0",
+    "clean-css-cli": "^4.3.0",
+    "deep-equal": "^1.1.0",
+    "json-stringify-safe": "^5.0.1",
+    "less": "^3.10.3",
+    "less-plugin-js-vars": "^3.0.0",
+    "mocha": "^6.2.0",
+    "ts-node": "^8.4.1",
+    "typescript": "^3.6.3",
+    "uglify-js": "^3.6.0"
+  }
+}
