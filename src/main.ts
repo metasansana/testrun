@@ -4,4 +4,4 @@ let app = Testrun.create(window, window.opener);
 
 window.testrun = app;
 
-if (app.check()) app.run();
+app.run();

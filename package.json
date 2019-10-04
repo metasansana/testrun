@@ -14,7 +14,7 @@
   "devDependencies": {
     "@quenk/test": "^2.1.2",
     "@quenk/wml": "^2.2.0",
-    "@quenk/wml-widgets": "^1.23.0",
+    "@quenk/wml-widgets": "^1.24.0",
     "@types/deep-equal": "^1.0.1",
     "@types/json-stringify-safe": "^5.0.0",
     "@types/mocha": "^5.2.7",

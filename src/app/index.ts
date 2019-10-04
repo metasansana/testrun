@@ -3,10 +3,11 @@ import * as columns from './columns';
 import { View } from '@quenk/wml';
 
 import { Value, Object } from '@quenk/noni/lib/data/json';
-import { reduce } from '@quenk/noni/lib/data/record';
 import { fromNullable, Maybe } from '@quenk/noni/lib/data/maybe';
+import { Future, fromCallback, parallel } from '@quenk/noni/lib/control/monad/future';
 
 import { Column } from '@quenk/wml-widgets/lib/data/table';
+import { FileChangedEvent } from '@quenk/wml-widgets/lib/control/file-input';
 
 import { TestrunView } from './view/app';
 
@@ -14,6 +15,8 @@ export const ID_MAIN = 'main';
 export const ID_MOCHA = 'mocha';
 export const ID_MOCHA_SCRIPT = 'testrun-mocha-script';
 export const ID_TEST_SCRIPT = 'testrun-test-script';
+
+const MSG_LOAD_FILES_FAILED = 'Unable to load the file(s) specified!';
 
 export const MSG_NO_PARENT = 'Unable to find a parent window for this Testrun ' +
     'instance. It may be that you have accessed the Testrun index file directly.' +
@@ -48,7 +51,23 @@ export class Testrun {
 
     view: View = new TestrunView(this);
 
+    tab: number = -1;
+
     values = {
+
+        files: {
+
+            text: 'Select test files',
+
+            multiple: true,
+
+            onChange: (e: FileChangedEvent) => {
+
+                this.loadFromFiles(e.value);
+
+            }
+
+        },
 
         table: {
 
@@ -85,9 +104,15 @@ export class Testrun {
     /**
      * @private
      */
-    loadGlobalSuites(): void {
+    loadFromFiles(list: File[]) {
 
-        this.values.table.data = getGlobalSuites(this.window);
+        file2Suites(list).fork(loadFromFilesFailed, (s: Suite[]) => {
+
+            this.values.table.data = s;
+
+            this.view.invalidate();
+
+        });
 
     }
 
@@ -114,68 +139,12 @@ export class Testrun {
     }
 
     /**
-     * runSuite will run the code of the selected suite in the context
-     * of the application window.
+     * runSuite 
      */
     runSuite(s: Suite): void {
 
-        //will have to be modified for extensions
-        this.clearSuite();
-
-        let b = getBody(this.app);
-
-        b.appendChild(createScript(this.app, URL_MOCHA_JS, ID_MOCHA_SCRIPT));
-
-        b.appendChild(createDiv(this.app, 'display:none', ID_MOCHA));
-
-        wait(1000, () => {
-
-            this.app.mocha.setup({ ui: 'bdd' });
-
-            b.appendChild(createIScript(this.app, s.code));
-
-            wait(1000, () => this.runMocha(() => {
-
-                let mResults = getElementById(this.app, ID_MOCHA);
-
-                if (mResults.isNothing()) {
-
-                    alert('Missing results div!');
-
-                } else {
-
-                    let results = mResults.get();
-
-                    this.window.document.adoptNode(results);
-
-                    results.style.display = 'unset';
-
-                    this.values.results.content = results;
-
-                    this.view.invalidate();
-
-                }
-
-            }));
-
-        });
-
-    }
-
-    /**
-     * check the environment to ensure Testrun was initailzed correctly.
-     */
-    check(): boolean {
-
-        if (this.app == null) {
-
-            alert(MSG_NO_PARENT);
-
-            return false;
-
-        }
-
-        return true;
+        browser.tabs.sendMessage(this.tab, { type: 'run', code: s.code })
+            .catch((e: Error) => alert(e.message));
 
     }
 
@@ -192,14 +161,37 @@ export class Testrun {
 
         } else {
 
-            //give DOM time to change.
-            wait(1000, () => {
+            browser.runtime.getBackgroundPage()
+                .then((p: { tab: number }) => { this.tab = p.tab; })
+                .then(() => {
 
-                this.loadGlobalSuites();
+                    browser.runtime.onMessage.addListener((m: any) => {
 
-                main.appendChild(this.view.render());
+                        if (m.type === 'results') {
 
-            });
+                            let div = document.createElement('div');
+
+                            div.innerHTML = m.value;
+
+                            div.style.display = null;
+
+                            this.values.results.content = div;
+
+                            this.view.invalidate();
+
+                        }
+
+                    });
+
+                    main.appendChild(this.view.render());
+
+                })
+                .then(() => browser.tabs.executeScript(this.tab, {
+
+                    file: '/lib/scripts/content/run_test.js'
+
+                }))
+                .catch((e: Error) => alert(e.message));
 
         }
 
@@ -207,14 +199,24 @@ export class Testrun {
 
 }
 
-const wait = (n: number, f: () => void) => setTimeout(f, n);
+const file2Suites = (files: File[]): Future<Suite[]> =>
+    readFiles(files).map(_2Suites(files));
 
-const getGlobalSuites = (w: Window): Suite[] => (w.TESTRUN_SUITES != null) ?
-    reduce(w.TESTRUN_SUITES, <Suite[]>[], (p, code, name) =>
-        p.concat({ name, code: atob(code) })) : [];
+const _2Suites = (files: File[]) => (srcs: string[]) =>
+    srcs.map((code, i) => ({ name: files[i].name, code }));
 
-const getBody = (w: Window): HTMLBodyElement =>
-    <HTMLBodyElement>w.document.body;
+const readFiles = (files: File[]): Future<string[]> =>
+    parallel(files.map(f => fromCallback(cb => {
+
+        let r = new FileReader();
+
+        r.onerror = () => cb(new Error('Read Error'));
+
+        r.onload = () => cb(undefined, <string>r.result);
+
+        r.readAsText(f);
+
+    })));
 
 const getElementById = (w: Window, id: string): Maybe<HTMLElement> =>
     fromNullable(w.document.getElementById(id));
@@ -228,39 +230,4 @@ const removeElementById = (w: Window, id: string) =>
 
         });
 
-const createDiv = (w: Window, style?: string, id?: string) => {
-
-    let div = w.document.createElement('div');
-
-    if (style) div.setAttribute('style', style);
-
-    if (id) div.setAttribute('id', id);
-
-    return div;
-
-}
-
-const createScript = (w: Window, src: string, id?: string) => {
-
-    let script = w.document.createElement('script');
-
-    script.setAttribute('src', src);
-
-    if (id) script.setAttribute('id', id);
-
-    return script;
-
-}
-
-const createIScript = (w: Window, code: string, id?: string) => {
-
-    let script = w.document.createElement('script');
-    let text = w.document.createTextNode(code);
-
-    script.appendChild(text);
-
-    if (id) script.setAttribute('id', id);
-
-    return script;
-
-}
+const loadFromFilesFailed = () => { alert(MSG_LOAD_FILES_FAILED); }

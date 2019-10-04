@@ -1,6 +1,7 @@
 import { View } from '@quenk/wml';
 import { Value, Object } from '@quenk/noni/lib/data/json';
 import { Column } from '@quenk/wml-widgets/lib/data/table';
+import { FileChangedEvent } from '@quenk/wml-widgets/lib/control/file-input';
 export declare const ID_MAIN = "main";
 export declare const ID_MOCHA = "mocha";
 export declare const ID_MOCHA_SCRIPT = "testrun-mocha-script";
@@ -28,7 +29,13 @@ export declare class Testrun {
     app: Window;
     constructor(window: Window, app: Window);
     view: View;
+    tab: number;
     values: {
+        files: {
+            text: string;
+            multiple: boolean;
+            onChange: (e: FileChangedEvent) => void;
+        };
         table: {
             data: Suite[];
             columns: Column<Value, Suite>[];
@@ -41,7 +48,7 @@ export declare class Testrun {
     /**
      * @private
      */
-    loadGlobalSuites(): void;
+    loadFromFiles(list: File[]): void;
     /**
      * @private
      */
@@ -51,14 +58,9 @@ export declare class Testrun {
      */
     runMocha(f: () => void): void;
     /**
-     * runSuite will run the code of the selected suite in the context
-     * of the application window.
+     * runSuite
      */
     runSuite(s: Suite): void;
-    /**
-     * check the environment to ensure Testrun was initailzed correctly.
-     */
-    check(): boolean;
     /**
      * run the application.
      */

@@ -2,6 +2,7 @@ import * as __wml from '@quenk/wml';
 
 import {MainLayout} from '@quenk/wml-widgets/lib/layout/main'; ;
 import {GridLayout,Row,Column} from '@quenk/wml-widgets/lib/layout/grid'; ;
+import {FileInput} from '@quenk/wml-widgets/lib/control/file-input'; ;
 import {DataTable} from '@quenk/wml-widgets/lib/data/table'; ;
 import {Testrun} from '../'; 
 //@ts-ignore: 6192
@@ -68,6 +69,20 @@ export class TestrunView  implements __wml.View {
         __this.widget(new GridLayout({}, [
 
         __this.widget(new Row({}, [
+
+        __this.widget(new Column({}, [
+
+        __this.node('h1', <__wml.Attrs>{}, [
+
+        document.createTextNode(`Testrun`)
+     ]),
+__this.widget(new FileInput({'ww': __context.values.files }, [
+
+        
+     ]),<__wml.Attrs>{'ww': __context.values.files })
+     ]),<__wml.Attrs>{})
+     ]),<__wml.Attrs>{}),
+__this.widget(new Row({}, [
 
         __this.widget(new Column({}, [
 
