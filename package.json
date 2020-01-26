@@ -9,7 +9,10 @@
   "author": "Lasana Murray <info@quenk.com> (http://quenk.com)",
   "license": "Apache-2.0",
   "dependencies": {
-    "@quenk/noni": "^1.33.0"
+    "@quenk/noni": "^1.33.0",
+    "@types/chrome": "0.0.91",
+    "@types/firefox": "0.0.29",
+    "@types/firefox-webext-browser": "^70.0.1"
   },
   "devDependencies": {
     "@quenk/test": "^2.1.2",
@@ -28,6 +31,8 @@
     "mocha": "^6.2.0",
     "ts-node": "^8.4.1",
     "typescript": "^3.6.3",
-    "uglify-js": "^3.6.0"
+    "uglify-js": "^3.6.0",
+    "web-ext": "^4.0.0",
+    "web-ext-types": "github:kelseasy/web-ext-types"
   }
 }

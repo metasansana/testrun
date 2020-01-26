@@ -55,3 +55,8 @@ docs: lib
 	--excludeNotExported \
 	--excludePrivate && \
 	echo "" > docs/.nojekyll
+
+.PHONY: run
+run:
+	$(eval include .env)
+	./node_modules/.bin/web-ext run --firefox=$(FIREFOX_BIN)
