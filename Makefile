@@ -29,7 +29,7 @@ lib: $(shell find src -type f -name \*.ts -o -name \*.wml)
 	$(WMLC) $@
 	$(TSC) --project $@
 
-	$(foreach script,$(shell find $@/scripts/page -name \*_bundle.ts),\
+	$(foreach script,$(shell find $@/scripts/page -name \*_bundle.js),\
 	$(BROWSERIFY) $(script) $(COMPRESS) > $(script)) && true
 
 test: test/public test/build
