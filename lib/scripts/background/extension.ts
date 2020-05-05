@@ -1,19 +1,13 @@
 
-let tab: number = 0;
+let tab: number = -1;
 
-browser.browserAction.onClicked.addListener((t: { id: number }) => {
+browser.browserAction.onClicked.addListener((t: browser.tabs.Tab) => {
 
-    tab = t.id;
+    tab = <number>t.id;
 
-    browser.windows.create({
-
-        type: 'panel',
+    browser.tabs.create({
 
         url: 'public/index.html',
-
-        width: 640,
-
-        height: 512
 
     });
 

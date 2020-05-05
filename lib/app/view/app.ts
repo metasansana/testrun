@@ -1,10 +1,5 @@
 import * as __wml from '@quenk/wml';
-
-import {MainLayout} from '@quenk/wml-widgets/lib/layout/main'; ;
-import {GridLayout,Row,Column} from '@quenk/wml-widgets/lib/layout/grid'; ;
-import {FileInput} from '@quenk/wml-widgets/lib/control/file-input'; ;
-import {DataTable} from '@quenk/wml-widgets/lib/data/table'; ;
-import {Testrun} from '../'; 
+import * as __document from '@quenk/wml/lib/dom';
 //@ts-ignore: 6192
 import {
 Maybe as __Maybe,
@@ -12,6 +7,14 @@ fromNullable as __fromNullable,
 fromArray as __fromArray
 }
 from '@quenk/noni/lib/data/maybe';
+import {MainLayout} from '@quenk/wml-widgets/lib/layout/main'; ;
+import {GridLayout,Row,Column} from '@quenk/wml-widgets/lib/layout/grid'; ;
+import {TextField} from '@quenk/wml-widgets/lib/control/text-field'; ;
+import {FileInput} from '@quenk/wml-widgets/lib/control/file-input'; ;
+import {DataTable} from '@quenk/wml-widgets/lib/data/table'; ;
+import {Testrun} from '../'; 
+
+
 //@ts-ignore:6192
 type __IfArg = ()=>__wml.Content[]
 
@@ -58,9 +61,11 @@ const __forOf = <A>(o:__Record<A>, f:__ForOfBody<A>,alt:__ForAlt) : __wml.Conten
     return ret.length === 0 ? alt(): ret;
 
 }
+
+
 export class TestrunView  implements __wml.View {
 
-   constructor(__context: Testrun  ) {
+   constructor(__context: Testrun) {
 
        this.template = (__this:__wml.Registry) => {
 
@@ -74,7 +79,15 @@ export class TestrunView  implements __wml.View {
 
         __this.node('h1', <__wml.Attrs>{}, [
 
-        document.createTextNode(`Testrun`)
+        __document.createTextNode('Testrun')
+     ]),
+__this.widget(new TextField({'ww': __context.values.url }, [
+
+        
+     ]),<__wml.Attrs>{'ww': __context.values.url }),
+__this.node('p', <__wml.Attrs>{}, [
+
+        __document.createTextNode('Select the test files below:')
      ]),
 __this.widget(new FileInput({'ww': __context.values.files }, [
 
@@ -110,12 +123,21 @@ __this.widget(new Row({}, [
 
    groups: { [key: string]: __wml.WMLElement[] } = {};
 
+   views: __wml.View[] = [];
+
    widgets: __wml.Widget[] = [];
 
-   tree: __wml.Content = document.createElement('div');
+   tree: Node = <Node>__document.createElement('div');
 
    template: __wml.Template;
 
+   registerView(v:__wml.View) : __wml.View {
+
+       this.views.push(v);
+
+       return v;
+
+}
    register(e:__wml.WMLElement, attrs:__wml.Attributes<any>) {
 
        let attrsMap = (<__wml.Attrs><any>attrs)
@@ -146,7 +168,7 @@ __this.widget(new Row({}, [
 
    node(tag:string, attrs:__wml.Attrs, children: __wml.Content[]) {
 
-       let e = document.createElement(tag);
+       let e = __document.createElement(tag);
 
        Object.keys(attrs).forEach(key => {
 
@@ -164,7 +186,7 @@ __this.widget(new Row({}, [
 
            } else if (typeof value === 'boolean') {
 
-             e.setAttribute(key, `${value}`);
+             e.setAttribute(key, '');
 
            }
 
@@ -177,8 +199,8 @@ __this.widget(new Row({}, [
                    case 'string':
                    case 'number':
                    case 'boolean':
-                     let tn = document.createTextNode(''+c);
-                     e.appendChild(tn)
+                     let tn = __document.createTextNode(''+c);
+                     e.appendChild(<Node>tn)
                    case 'object':
                        e.appendChild(<Node>c);
                    break;
@@ -206,15 +228,22 @@ __this.widget(new Row({}, [
 
    findById<E extends __wml.WMLElement>(id: string): __Maybe<E> {
 
-       return __fromNullable<E>(<E>this.ids[id])
+       let mW:__Maybe<E> = __fromNullable<E>(<E>this.ids[id])
+
+       return this.views.reduce((p,c)=>
+       p.isJust() ? p : c.findById(id), mW);
 
    }
 
    findByGroup<E extends __wml.WMLElement>(name: string): __Maybe<E[]> {
 
-       return __fromArray(this.groups.hasOwnProperty(name) ?
+      let mGroup:__Maybe<E[]> =
+           __fromArray(this.groups.hasOwnProperty(name) ?
            <any>this.groups[name] : 
            []);
+
+      return this.views.reduce((p,c) =>
+       p.isJust() ? p : c.findByGroup(name), mGroup);
 
    }
 
@@ -229,7 +258,7 @@ __this.widget(new Row({}, [
        if (tree.parentNode == null)
                   throw new Error('invalidate(): cannot invalidate this view, it has no parent node!');
 
-       parent.replaceChild(this.render(), tree) 
+       parent.replaceChild(<Node>this.render(), tree) 
 
    }
 
@@ -238,7 +267,8 @@ __this.widget(new Row({}, [
        this.ids = {};
        this.widgets.forEach(w => w.removed());
        this.widgets = [];
-       this.tree = this.template(this);
+       this.views = [];
+       this.tree = <Node>this.template(this);
 
        this.ids['root'] = (this.ids['root']) ?
        this.ids['root'] : 

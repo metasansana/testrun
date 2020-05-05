@@ -1,6 +1,9 @@
+/// <reference types="firefox-webext-browser" />
 import { View } from '@quenk/wml';
 import { Value, Object } from '@quenk/noni/lib/data/json';
+import { Maybe } from '@quenk/noni/lib/data/maybe';
 import { Column } from '@quenk/wml-widgets/lib/data/table';
+import { TextChangedEvent } from '@quenk/wml-widgets/lib/control/text-field';
 import { FileChangedEvent } from '@quenk/wml-widgets/lib/control/file-input';
 export declare const ID_MAIN = "main";
 export declare const ID_MOCHA = "mocha";
@@ -8,6 +11,18 @@ export declare const ID_MOCHA_SCRIPT = "testrun-mocha-script";
 export declare const ID_TEST_SCRIPT = "testrun-test-script";
 export declare const MSG_NO_PARENT: string;
 export declare const URL_MOCHA_JS = "testrun/mocha.js";
+export declare const MSG_TYPE_RESULTS = "results";
+/**
+ * Message is the data structure we use to pass data between
+ * the background, content and page contexts.
+ */
+export interface Message {
+    [key: string]: any;
+    /**
+     * type of message
+     */
+    type: string;
+}
 /**
  * Suite describes a test suite that can be run.
  */
@@ -30,7 +45,14 @@ export declare class Testrun {
     constructor(window: Window, app: Window);
     view: View;
     tab: number;
+    currentTab: Maybe<browser.tabs.Tab>;
     values: {
+        url: {
+            name: string;
+            label: string;
+            value: string;
+            onChange: (e: TextChangedEvent) => void;
+        };
         files: {
             text: string;
             multiple: boolean;
@@ -44,6 +66,10 @@ export declare class Testrun {
             content: HTMLElement;
         };
     };
+    /**
+     * handleMessage dispatches messages received via the postMessage() api.
+     */
+    handleMessage: (m: object, _sender: browser.runtime.MessageSender) => void;
     static create(w: Window, a: Window): Testrun;
     /**
      * @private
@@ -57,6 +83,15 @@ export declare class Testrun {
      * @private
      */
     runMocha(f: () => void): void;
+    /**
+     * showResults parses the html from the results and displays it
+     * in the main UI.
+     */
+    showResults(msg: Message): void;
+    /**
+     * showError alerts the user and dumps an error to the console.
+     */
+    showError(e: Error): void;
     /**
      * runSuite
      */

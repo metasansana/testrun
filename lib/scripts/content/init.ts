@@ -1,5 +1,5 @@
 
-function runTest() {
+const runInit = () => {
 
     const ID_MOCHA = 'mocha';
 
@@ -9,7 +9,7 @@ function runTest() {
 
     const URL_MOCHA_JS = browser.runtime.getURL('/public/mocha.js');
 
-    const URL_HANDLER_JS = browser.runtime.getURL('/lib/scripts/page/handler.js');
+    const URL_HANDLER_JS = browser.runtime.getURL('/lib/scripts/page/handler_bundle.js');
 
     const removeElementById = (w: Window, id: string) => {
 
@@ -48,11 +48,11 @@ function runTest() {
 
     }
 
-    const handleMessagess = (code: string) => (e: { data: any }) => {
+    const handleMessages = (code: string) => (e: { data: any }) => {
 
         if (e.data.type === 'mocha-ready') {
 
-            window.postMessage({ type: 'run', code }, '*');
+            window.postMessage({ type: 'exec', code }, '*');
 
         } else if (e.data.type === 'results') {
 
@@ -72,13 +72,13 @@ function runTest() {
 
         let b = window.document.body;
 
-        b.appendChild(createScript(window, URL_MOCHA_JS, ID_MOCHA_SCRIPT));
-
-        b.appendChild(createScript(window, URL_HANDLER_JS, ID_MOCHA_SCRIPT));
-
         b.appendChild(createDiv(window, 'display:none', ID_MOCHA));
 
-        window.addEventListener('message', handleMessagess(code));
+        b.appendChild(createScript(window, URL_MOCHA_JS, ID_MOCHA_SCRIPT));
+
+        b.appendChild(createScript(window, URL_HANDLER_JS, ID_TEST_SCRIPT));
+
+        window.addEventListener('message', handleMessages(code));
 
     }
 
@@ -90,4 +90,4 @@ function runTest() {
 
 }
 
-runTest();
+runInit();
