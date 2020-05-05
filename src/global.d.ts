@@ -1,17 +1,42 @@
-const browser: any;
 
 interface Window {
 
-    testrun: object,
+    Mocha: {
 
-    mocha: any,
+        reporters: {
 
-    wrappedJSObject: any,
+            Base: import('mocha').reporters
 
-    TESTRUN_SUITES?: {
+        },
 
-        [key: string]: string
+        Runner: {
+
+            constants: {
+
+                EVENT_TEST_PASS: string,
+                EVENT_TEST_FAIL: string,
+                EVENT_TEST_END: string,
+                EVENT_RUN_END: string,
+                EVENT_TEST_PENDING: string
+
+            }
+
+        }
+
+    },
+
+    mocha: {
+
+        setup(opts?: Mocha.Interface | Mocha.MochaSetupOptions): Mocha
+
+        run(): Mocha.Runner
 
     }
+
+}
+
+declare namespace browser {
+
+    interface tabs { }
 
 }

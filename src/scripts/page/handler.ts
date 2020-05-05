@@ -16,6 +16,7 @@ function main() {
 
         tag.setAttribute('id', ID_TESTRUN_TEST);
 
+        //TODO: handle errors here when the parsing the script fails.
         tag.appendChild(text);
 
         document.body.appendChild(tag);
@@ -47,8 +48,13 @@ function main() {
 
         if (e.source === window) {
 
-            if (e.data.type === 'run')
+            if (e.data.type === 'exec')
                 runMocha(e.data);
+
+        } else {
+
+            console.warn(`Ignoring messsage: ${JSON.stringify(e.data)} ` +
+                `from unknown window source!`);
 
         }
 
@@ -59,7 +65,6 @@ function main() {
     setTimeout(() => {
 
         window.mocha.setup({ ui: 'bdd' });
-
         window.postMessage({ type: 'mocha-ready' }, '*');
 
     }, 1000);

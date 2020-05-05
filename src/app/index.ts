@@ -1,12 +1,16 @@
 import * as columns from './columns';
 
 import { View } from '@quenk/wml';
-
 import { Value, Object } from '@quenk/noni/lib/data/json';
-import { fromNullable, Maybe } from '@quenk/noni/lib/data/maybe';
+import {
+    Maybe,
+    fromNullable,
+    just,
+    nothing
+} from '@quenk/noni/lib/data/maybe';
 import { Future, fromCallback, parallel } from '@quenk/noni/lib/control/monad/future';
-
 import { Column } from '@quenk/wml-widgets/lib/data/table';
+import { TextChangedEvent } from '@quenk/wml-widgets/lib/control/text-field';
 import { FileChangedEvent } from '@quenk/wml-widgets/lib/control/file-input';
 
 import { TestrunView } from './view/app';
@@ -24,6 +28,23 @@ export const MSG_NO_PARENT = 'Unable to find a parent window for this Testrun ' 
     ' alternatively you can load Testrun using window.open() from your app.';
 
 export const URL_MOCHA_JS = 'testrun/mocha.js';
+
+export const MSG_TYPE_RESULTS = 'results';
+
+/**
+ * Message is the data structure we use to pass data between 
+ * the background, content and page contexts.
+ */
+export interface Message {
+
+    [key: string]: any
+
+    /**
+     * type of message
+     */
+    type: string
+
+}
 
 /**
  * Suite describes a test suite that can be run.
@@ -53,7 +74,25 @@ export class Testrun {
 
     tab: number = -1;
 
+    currentTab: Maybe<browser.tabs.Tab> = nothing();
+
     values = {
+
+        url: {
+
+            name: 'url',
+
+            label: 'App URL',
+
+            value: 'http://localhost:8080',
+
+            onChange: (e: TextChangedEvent) => {
+
+                this.values.url.value = e.value;
+
+            }
+
+        },
 
         files: {
 
@@ -94,6 +133,27 @@ export class Testrun {
         }
 
     };
+
+    /**
+     * handleMessage dispatches messages received via the postMessage() api.
+     */
+    handleMessage = (m: object, _sender: browser.runtime.MessageSender) => {
+
+        let msg = <Message>m;
+
+        switch (msg.type) {
+
+            case MSG_TYPE_RESULTS:
+                this.showResults(msg);
+                break;
+
+            default:
+                warn(`Ignoring unknown message: ${JSON.stringify(msg)}.`);
+                break;
+
+        }
+
+    }
 
     static create(w: Window, a: Window): Testrun {
 
@@ -139,12 +199,88 @@ export class Testrun {
     }
 
     /**
+     * showResults parses the html from the results and displays it
+     * in the main UI.
+     */
+    showResults(msg: Message): void {
+
+        let code = msg.value || '';
+
+        browser
+            .tabs
+            .create({
+
+                url: '/public/results.html'
+
+            })
+            .then(tab =>
+                browser
+                    .tabs
+                    .executeScript(<number>tab.id, {
+
+                        file: '/lib/scripts/content/init_result.js'
+
+                    })
+                    .then(() =>
+                        browser
+                            .tabs
+                            .sendMessage(<number>tab.id, {
+
+                                type: 'run',
+
+                                code: code
+
+                            })))
+            .catch(e => this.showError(e));
+
+    }
+
+    /**
+     * showError alerts the user and dumps an error to the console.
+     */
+    showError(e: Error): void {
+
+        alert(`Error: ${e.message}`);
+        error(e);
+
+    }
+
+    /**
      * runSuite 
      */
     runSuite(s: Suite): void {
 
-        browser.tabs.sendMessage(this.tab, { type: 'run', code: s.code })
-            .catch((e: Error) => alert(e.message));
+        browser.runtime.onMessage.addListener(this.handleMessage);
+
+        browser
+            .tabs
+            .create({ url: this.values.url.value })
+            .then((tab: browser.tabs.Tab) => {
+
+                this.currentTab = just(tab);
+
+                return tab;
+
+            })
+            .then(tab =>
+                browser
+                    .tabs
+                    .executeScript(<number>tab.id, {
+
+                        file: '/lib/scripts/content/init.js'
+
+                    })
+                    .then(() =>
+                        browser
+                            .tabs
+                            .sendMessage(<number>tab.id, {
+
+                                type: 'run',
+
+                                code: s.code
+
+                            })))
+            .catch(e => this.showError(e));
 
     }
 
@@ -155,43 +291,14 @@ export class Testrun {
 
         let main = <HTMLElement>this.window.document.getElementById(ID_MAIN);
 
-        if (main == null) {
+        if (main != null) {
 
-            alert(`Missing "${ID_MAIN}" id in application document!`);
+            main.appendChild(<Node>this.view.render());
 
         } else {
 
-            browser.runtime.getBackgroundPage()
-                .then((p: { tab: number }) => { this.tab = p.tab; })
-                .then(() => {
-
-                    browser.runtime.onMessage.addListener((m: any) => {
-
-                        if (m.type === 'results') {
-
-                            let div = document.createElement('div');
-
-                            div.innerHTML = m.value;
-
-                            div.style.display = null;
-
-                            this.values.results.content = div;
-
-                            this.view.invalidate();
-
-                        }
-
-                    });
-
-                    main.appendChild(this.view.render());
-
-                })
-                .then(() => browser.tabs.executeScript(this.tab, {
-
-                    file: '/lib/scripts/content/run_test.js'
-
-                }))
-                .catch((e: Error) => alert(e.message));
+            return this.showError(new Error
+                (`Missing "${ID_MAIN}" id in application document!`));
 
         }
 
@@ -231,3 +338,9 @@ const removeElementById = (w: Window, id: string) =>
         });
 
 const loadFromFilesFailed = () => { alert(MSG_LOAD_FILES_FAILED); }
+
+const warn = (msg: string) =>
+    console.warn(`[Testrun]: ${msg}`);
+
+const error = (e: Error) =>
+    console.error(`[Testrun]: ${e.message}`, e);
