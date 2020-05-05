@@ -7,6 +7,7 @@ TSC?=./node_modules/.bin/tsc
 WMLC?=./node_modules/.bin/wmlc
 JS_VARS:=./node_modules/@quenk/wml-widgets/lib/classNames.js
 COMPRESS:=$(if $(findstring yes,$(DEBUG)),,|$(UGLIFY))
+COMPRESS:=
 
 .DELETE_ON_ERROR:
 
@@ -29,8 +30,10 @@ lib: $(shell find src -type f -name \*.ts -o -name \*.wml)
 	$(WMLC) $@
 	$(TSC) --project $@
 
-	$(foreach script,$(shell find $@/scripts/page -name \*_bundle.js),\
-	$(BROWSERIFY) $(script) $(COMPRESS) > $(script)) && true
+	$(foreach script,$(shell find $@/scripts/page -name \*.js),\
+	  $(if $(findstring _bundle,$(script)),,\
+	  $(BROWSERIFY) $(script) $(COMPRESS) > \
+	  $(subst .js,,$(script))_bundle.js &&)) true
 
 test: test/public test/build
 	touch $@
