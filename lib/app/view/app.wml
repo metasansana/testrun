@@ -4,6 +4,8 @@
   Row,
   Column
   ) from "@quenk/wml-widgets/lib/layout/grid" %}
+{% import (TextField) from "@quenk/wml-widgets/lib/control/text-field" %}
+{% import (FileInput) from "@quenk/wml-widgets/lib/control/file-input" %}
 {% import (DataTable) from "@quenk/wml-widgets/lib/data/table" %}
 
 {% import (Testrun) from "../" %}
@@ -12,6 +14,24 @@
 <MainLayout>
 
   <GridLayout>
+
+    <Row>
+
+      <Column>
+
+        <h1>Testrun</h1>
+
+        <TextField 
+          ww={{@values.url}} />
+
+        <p>Select the test files below:</p>
+
+        <FileInput 
+          ww={{@values.files}} />
+
+      </Column>
+
+    </Row>
 
     <Row>
 

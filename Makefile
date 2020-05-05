@@ -6,6 +6,10 @@ CLEANCSS?=./node_modules/.bin/cleancss
 TSC?=./node_modules/.bin/tsc
 WMLC?=./node_modules/.bin/wmlc
 JS_VARS:=./node_modules/@quenk/wml-widgets/lib/classNames.js
+COMPRESS:=$(if $(findstring yes,$(DEBUG)),,|$(UGLIFY))
+COMPRESS:=
+
+.DELETE_ON_ERROR:
 
 ./: public test
 	touch $@
@@ -14,8 +18,7 @@ public: public/testrun.js public/testrun.css
 	touch $@
 
 public/testrun.js: lib
-	$(BROWSERIFY) lib/main.js \
-	$(if $(findstring yes,$(DEBUG)),,|$(UGLIFY)) > $@
+	$(BROWSERIFY) lib/main.js $(COMPRESS) > $@
 
 public/testrun.css: $(shell find src -type f -name \*.less)
 	$(LESSC) $(if $(findstring yes,$(DEBUG)),--source-map-less-inline,)  \
@@ -27,20 +30,19 @@ lib: $(shell find src -type f -name \*.ts -o -name \*.wml)
 	$(WMLC) $@
 	$(TSC) --project $@
 
+	$(foreach script,$(shell find $@/scripts/page -name \*.js),\
+	  $(if $(findstring _bundle,$(script)),,\
+	  $(BROWSERIFY) $(script) $(COMPRESS) > \
+	  $(subst .js,,$(script))_bundle.js &&)) true
+
 test: test/public test/build
 	touch $@
 
-test/public: test/build test/base64/tests.js
-	$(BROWSERIFY) test/base64/tests.js > $@/app.js
-	touch $@
-
-test/base64/tests.js: test/build
-	echo "window.TESTRUN_SUITES = { " > $@
+test/public: test/build 
 	$(eval FILES:=$(shell find test/build -name \*.js))
 	$(foreach f,$(FILES),\
-	  $(eval CODE=$(shell $(BROWSERIFY) $(f) | base64))\
-	  @echo "'$(notdir $(basename $(f)))':'$(CODE)'" >> $@)
-	echo "}" >> $@
+	  $(BROWSERIFY) $(f) > $@/$(notdir $(basename $(f))).js)
+	touch $@
 
 test/build: $(shell find test/src -type f)
 	rm -R $@ || true 
@@ -53,7 +55,11 @@ docs: lib
 	--mode modules \
 	--out $@ \
 	--tsconfig lib/tsconfig.json \
-	--theme minimal lib  \
 	--excludeNotExported \
 	--excludePrivate && \
 	echo "" > docs/.nojekyll
+
+.PHONY: run
+run:
+	$(eval include .env)
+	./node_modules/.bin/web-ext run --firefox=$(FIREFOX_BIN)

@@ -9,17 +9,19 @@
   "author": "Lasana Murray <info@quenk.com> (http://quenk.com)",
   "license": "Apache-2.0",
   "dependencies": {
-    "@quenk/noni": "^1.33.0"
+    "@quenk/noni": "^1.39.1",
+    "@types/firefox": "0.0.29"
   },
   "devDependencies": {
     "@quenk/test": "^2.1.2",
-    "@quenk/wml": "^2.2.0",
-    "@quenk/wml-widgets": "^1.23.0",
+    "@quenk/wml": "^2.6.1",
+    "@quenk/wml-widgets": "^1.27.13",
     "@types/deep-equal": "^1.0.1",
+    "@types/firefox-webext-browser": "^70.0.1",
     "@types/json-stringify-safe": "^5.0.0",
     "@types/mocha": "^5.2.7",
-    "@types/node": "^12.7.8",
-    "browserify": "^16.5.0",
+    "@types/node": "^13.13.4",
+    "browserify": "^16.5.1",
     "clean-css-cli": "^4.3.0",
     "deep-equal": "^1.1.0",
     "json-stringify-safe": "^5.0.1",
@@ -27,7 +29,9 @@
     "less-plugin-js-vars": "^3.0.0",
     "mocha": "^6.2.0",
     "ts-node": "^8.4.1",
-    "typescript": "^3.6.3",
-    "uglify-js": "^3.6.0"
+    "typescript": "^3.8.3",
+    "uglify-js": "^3.6.0",
+    "web-ext": "^4.0.0",
+    "webextension-polyfill-ts": "^0.15.0"
   }
 }
