@@ -1,11 +1,7 @@
+(() => {
 
-const ID_MAIN = 'main';
-const ID_MOCHA = 'mocha';
-
-const URL_RESULT_HANDLER_JS =
-    browser.runtime.getURL('/lib/scripts/page/handler_bundle.js');
-
-const runResult = () => {
+    const ID_MAIN = 'main';
+    const ID_MOCHA = 'mocha';
 
     const run = ({ code }: { code: string }) => {
 
@@ -30,6 +26,4 @@ const runResult = () => {
 
     });
 
-}
-
-runResult();
+})();
