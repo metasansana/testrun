@@ -11,7 +11,7 @@ COMPRESS:=
 
 .DELETE_ON_ERROR:
 
-./: public test
+./: public test native
 	touch $@
 
 public: public/testrun.js public/testrun.css
@@ -48,6 +48,15 @@ test/build: $(shell find test/src -type f)
 	rm -R $@ || true 
 	cp -R -u test/src $@
 	$(TSC) --project $@
+
+native: native/build
+	touch $@
+
+native/build: $(shell find native/src -type f)
+	rm -R $@ || true 
+	cp -R -u native/src $@
+	$(TSC) --project $@
+	chmod +x $@/main.js
 
 .PHONY: docs
 docs: lib

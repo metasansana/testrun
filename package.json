@@ -20,7 +20,7 @@
     "@types/firefox-webext-browser": "^70.0.1",
     "@types/json-stringify-safe": "^5.0.0",
     "@types/mocha": "^5.2.7",
-    "@types/node": "^13.13.4",
+    "@types/node": "^13.13.5",
     "browserify": "^16.5.1",
     "clean-css-cli": "^4.3.0",
     "deep-equal": "^1.1.0",
@@ -31,7 +31,7 @@
     "ts-node": "^8.4.1",
     "typescript": "^3.8.3",
     "uglify-js": "^3.6.0",
-    "web-ext": "^4.0.0",
+    "web-ext": "^4.2.0",
     "webextension-polyfill-ts": "^0.15.0"
   }
 }

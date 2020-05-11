@@ -36,6 +36,7 @@ exports.ActionColumn = ActionColumn;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var columns = require("./columns");
+var record_1 = require("@quenk/noni/lib/data/record");
 var maybe_1 = require("@quenk/noni/lib/data/maybe");
 var future_1 = require("@quenk/noni/lib/control/monad/future");
 var app_1 = require("./view/app");
@@ -43,6 +44,7 @@ exports.ID_MAIN = 'main';
 exports.ID_MOCHA = 'mocha';
 exports.ID_MOCHA_SCRIPT = 'testrun-mocha-script';
 exports.ID_TEST_SCRIPT = 'testrun-test-script';
+var MSG_EXEC_PATH_NOT_SET = 'You must set an exec path to run cli scripts!';
 var MSG_LOAD_FILES_FAILED = 'Unable to load the file(s) specified!';
 exports.MSG_NO_PARENT = 'Unable to find a parent window for this Testrun ' +
     'instance. It may be that you have accessed the Testrun index file directly.' +
@@ -61,6 +63,7 @@ var Testrun = /** @class */ (function () {
         this.view = new app_1.TestrunView(this);
         this.tab = -1;
         this.currentTab = maybe_1.nothing();
+        this.runner = browser.runtime.connectNative('testrun_native');
         this.values = {
             url: {
                 name: 'url',
@@ -68,6 +71,14 @@ var Testrun = /** @class */ (function () {
                 value: 'http://localhost:8080',
                 onChange: function (e) {
                     _this.values.url.value = e.value;
+                }
+            },
+            exec: {
+                name: 'exec',
+                label: 'Exec CLI Script Path',
+                value: '',
+                onChange: function (e) {
+                    _this.values.exec.value = e.value;
                 }
             },
             files: {
@@ -93,11 +104,21 @@ var Testrun = /** @class */ (function () {
         /**
          * handleMessage dispatches messages received via the postMessage() api.
          */
-        this.handleMessage = function (m, _sender) {
+        this.handleMessage = function (m) {
             var msg = m;
             switch (msg.type) {
                 case exports.MSG_TYPE_RESULTS:
                     _this.showResults(msg);
+                    break;
+                case 'testrun-exec-cli-script':
+                    _this.runCLIScript(msg);
+                    break;
+                case 'testrun-exec-cli-script-result':
+                case 'testrun-exec-cli-script-error':
+                    if (_this.currentTab.isJust())
+                        browser
+                            .tabs
+                            .sendMessage(_this.currentTab.get().id, msg);
                     break;
                 default:
                     warn("Ignoring unknown message: " + JSON.stringify(msg) + ".");
@@ -168,6 +189,19 @@ var Testrun = /** @class */ (function () {
         alert("Error: " + e.message);
         error(e);
     };
+    Testrun.prototype.runCLIScript = function (e) {
+        if (this.values.exec.value === '')
+            this.handleMessage({
+                id: e.id,
+                type: 'testrun-exec-cli-script-error',
+                message: MSG_EXEC_PATH_NOT_SET,
+                stack: ''
+            });
+        else
+            this.runner.postMessage(record_1.merge(e, {
+                name: this.values.exec.value + "/" + e.name
+            }));
+    };
     /**
      * runSuite
      */
@@ -205,6 +239,7 @@ var Testrun = /** @class */ (function () {
         var main = this.window.document.getElementById(exports.ID_MAIN);
         if (main != null) {
             main.appendChild(this.view.render());
+            this.runner.onMessage.addListener(this.handleMessage);
         }
         else {
             return this.showError(new Error("Missing \"" + exports.ID_MAIN + "\" id in application document!"));
@@ -245,7 +280,7 @@ var error = function (e) {
     return console.error("[Testrun]: " + e.message, e);
 };
 
-},{"./columns":1,"./view/app":3,"@quenk/noni/lib/control/monad/future":7,"@quenk/noni/lib/data/maybe":13}],3:[function(require,module,exports){
+},{"./columns":1,"./view/app":3,"@quenk/noni/lib/control/monad/future":7,"@quenk/noni/lib/data/maybe":13,"@quenk/noni/lib/data/record":14}],3:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var __document = require("@quenk/wml/lib/dom");
@@ -295,7 +330,16 @@ var TestrunView = /** @class */ (function () {
                             __this.node('h1', {}, [
                                 __document.createTextNode('Testrun')
                             ]),
-                            __this.widget(new text_field_1.TextField({ 'ww': __context.values.url }, []), { 'ww': __context.values.url }),
+                            __this.widget(new text_field_1.TextField({ 'ww': __context.values.url }, []), { 'ww': __context.values.url })
+                        ]), {})
+                    ]), {}),
+                    __this.widget(new grid_1.Row({}, [
+                        __this.widget(new grid_1.Column({}, [
+                            __this.widget(new text_field_1.TextField({ 'ww': __context.values.exec }, []), { 'ww': __context.values.exec })
+                        ]), {})
+                    ]), {}),
+                    __this.widget(new grid_1.Row({}, [
+                        __this.widget(new grid_1.Column({}, [
                             __this.node('p', {}, [
                                 __document.createTextNode('Select the test files below:')
                             ]),
