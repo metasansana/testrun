@@ -12,9 +12,19 @@
     "permissions": [
 
         "activeTab",
-        "<all_urls>"
+        "<all_urls>",
+        "nativeMessaging"
 
     ],
+    "browser_specific_settings": {
+
+      "gecko": {
+
+        "id": "testrun@trinistorm.org"
+
+      }
+
+    },
     "browser_action": {
 
         "default_icon": "icons/testrun.svg",

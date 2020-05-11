@@ -1,0 +1,13 @@
+{
+
+    "name": "testrun_native",
+
+    "description": "Executes scripts during testing.",
+
+    "path": "/usr/local/bin/testrun_native",
+
+    "type": "stdio",
+
+    "allowed_extensions": ["testrun@trinistorm.org"]
+
+}
