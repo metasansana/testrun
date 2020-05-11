@@ -1,9 +1,13 @@
 {
 
     "manifest_version": 2,
+
     "name": "testrun",
+
     "version": "0.0.1",
-    "description": "Extension for running mocha tests against a web app.",
+
+    "description": "Inject Mocha tests into a running app.",
+
     "icons": {
 
         "48": "icons/testrun.svg"
@@ -12,7 +16,9 @@
     "permissions": [
 
         "activeTab",
+
         "<all_urls>",
+
         "nativeMessaging"
 
     ],
@@ -28,17 +34,23 @@
     "browser_action": {
 
         "default_icon": "icons/testrun.svg",
+
         "default_title": "Testrun"
 
     },
     "background": {
 
-        "scripts": ["lib/scripts/background/extension.js"]
+        "scripts": [
+
+          "lib/scripts/background/extension.js"
+
+        ]
 
     },
     "web_accessible_resources": [
 
         "public/*",
+
         "lib/scripts/page/*"
 
     ]
