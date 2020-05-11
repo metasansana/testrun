@@ -2,6 +2,7 @@ import * as columns from './columns';
 
 import { View } from '@quenk/wml';
 import { Value, Object } from '@quenk/noni/lib/data/json';
+import { merge } from '@quenk/noni/lib/data/record';
 import {
     Maybe,
     fromNullable,
@@ -20,6 +21,8 @@ export const ID_MOCHA = 'mocha';
 export const ID_MOCHA_SCRIPT = 'testrun-mocha-script';
 export const ID_TEST_SCRIPT = 'testrun-test-script';
 
+const MSG_EXEC_PATH_NOT_SET = 'You must set an exec path to run cli scripts!';
+
 const MSG_LOAD_FILES_FAILED = 'Unable to load the file(s) specified!';
 
 export const MSG_NO_PARENT = 'Unable to find a parent window for this Testrun ' +
@@ -30,6 +33,21 @@ export const MSG_NO_PARENT = 'Unable to find a parent window for this Testrun ' 
 export const URL_MOCHA_JS = 'testrun/mocha.js';
 
 export const MSG_TYPE_RESULTS = 'results';
+
+/**
+ * CLIScriptRequest
+ */
+export interface CLIScriptRequest {
+
+    id: string,
+
+    type: string,
+
+    name: string,
+
+    args: string
+
+}
 
 /**
  * Message is the data structure we use to pass data between 
@@ -76,6 +94,8 @@ export class Testrun {
 
     currentTab: Maybe<browser.tabs.Tab> = nothing();
 
+    runner = browser.runtime.connectNative('testrun_native');
+
     values = {
 
         url: {
@@ -89,6 +109,22 @@ export class Testrun {
             onChange: (e: TextChangedEvent) => {
 
                 this.values.url.value = e.value;
+
+            }
+
+        },
+
+        exec: {
+
+            name: 'exec',
+
+            label: 'Exec CLI Script Path',
+
+            value: '',
+
+            onChange: (e: TextChangedEvent) => {
+
+                this.values.exec.value = e.value;
 
             }
 
@@ -137,7 +173,7 @@ export class Testrun {
     /**
      * handleMessage dispatches messages received via the postMessage() api.
      */
-    handleMessage = (m: object, _sender: browser.runtime.MessageSender) => {
+    handleMessage = (m: object) => {
 
         let msg = <Message>m;
 
@@ -145,6 +181,18 @@ export class Testrun {
 
             case MSG_TYPE_RESULTS:
                 this.showResults(msg);
+                break;
+
+            case 'testrun-exec-cli-script':
+                this.runCLIScript(<any>msg);
+                break;
+
+            case 'testrun-exec-cli-script-result':
+            case 'testrun-exec-cli-script-error':
+                if (this.currentTab.isJust())
+                    browser
+                        .tabs
+                        .sendMessage(<number>this.currentTab.get().id, msg);
                 break;
 
             default:
@@ -245,6 +293,27 @@ export class Testrun {
 
     }
 
+    runCLIScript(e: CLIScriptRequest) {
+
+        if (this.values.exec.value === '')
+            this.handleMessage({
+
+                id: e.id,
+
+                type: 'testrun-exec-cli-script-error',
+
+                message: MSG_EXEC_PATH_NOT_SET,
+
+                stack: ''
+
+            });
+        else
+            this.runner.postMessage(merge(e, {
+                name: `${this.values.exec.value}/${e.name}`
+            }));
+
+    }
+
     /**
      * runSuite 
      */
@@ -294,6 +363,8 @@ export class Testrun {
         if (main != null) {
 
             main.appendChild(<Node>this.view.render());
+
+            this.runner.onMessage.addListener(this.handleMessage);
 
         } else {
 

@@ -24,6 +24,25 @@
         <TextField 
           ww={{@values.url}} />
 
+      </Column>
+
+    </Row>
+
+    <Row>
+
+      <Column>
+
+        <TextField 
+          ww={{@values.exec}} />
+
+      </Column>
+
+    </Row>
+
+    <Row>
+
+      <Column>
+
         <p>Select the test files below:</p>
 
         <FileInput 

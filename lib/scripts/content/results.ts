@@ -1,7 +1,6 @@
+(() => {
 
-const URL_MOCHA_CSS = '/public/mocha.css';
-
-const runResults = () => {
+    const URL_MOCHA_CSS = '/public/mocha.css';
 
     browser.tabs.insertCSS({
 
@@ -9,6 +8,4 @@ const runResults = () => {
 
     });
 
-}
-
-runResults();
+})();

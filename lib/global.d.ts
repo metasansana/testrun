@@ -1,5 +1,10 @@
+declare var cloneInto: any;
 
 interface Window {
+
+    execCLIScript: Function,
+
+    cloneInto: any,
 
     Mocha: {
 

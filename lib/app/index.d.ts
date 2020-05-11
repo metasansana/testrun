@@ -13,6 +13,15 @@ export declare const MSG_NO_PARENT: string;
 export declare const URL_MOCHA_JS = "testrun/mocha.js";
 export declare const MSG_TYPE_RESULTS = "results";
 /**
+ * CLIScriptRequest
+ */
+export interface CLIScriptRequest {
+    id: string;
+    type: string;
+    name: string;
+    args: string;
+}
+/**
  * Message is the data structure we use to pass data between
  * the background, content and page contexts.
  */
@@ -46,8 +55,15 @@ export declare class Testrun {
     view: View;
     tab: number;
     currentTab: Maybe<browser.tabs.Tab>;
+    runner: browser.runtime.Port;
     values: {
         url: {
+            name: string;
+            label: string;
+            value: string;
+            onChange: (e: TextChangedEvent) => void;
+        };
+        exec: {
             name: string;
             label: string;
             value: string;
@@ -69,7 +85,7 @@ export declare class Testrun {
     /**
      * handleMessage dispatches messages received via the postMessage() api.
      */
-    handleMessage: (m: object, _sender: browser.runtime.MessageSender) => void;
+    handleMessage: (m: object) => void;
     static create(w: Window, a: Window): Testrun;
     /**
      * @private
@@ -92,6 +108,7 @@ export declare class Testrun {
      * showError alerts the user and dumps an error to the console.
      */
     showError(e: Error): void;
+    runCLIScript(e: CLIScriptRequest): void;
     /**
      * runSuite
      */

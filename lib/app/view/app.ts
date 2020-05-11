@@ -84,8 +84,24 @@ export class TestrunView  implements __wml.View {
 __this.widget(new TextField({'ww': __context.values.url }, [
 
         
-     ]),<__wml.Attrs>{'ww': __context.values.url }),
-__this.node('p', <__wml.Attrs>{}, [
+     ]),<__wml.Attrs>{'ww': __context.values.url })
+     ]),<__wml.Attrs>{})
+     ]),<__wml.Attrs>{}),
+__this.widget(new Row({}, [
+
+        __this.widget(new Column({}, [
+
+        __this.widget(new TextField({'ww': __context.values.exec }, [
+
+        
+     ]),<__wml.Attrs>{'ww': __context.values.exec })
+     ]),<__wml.Attrs>{})
+     ]),<__wml.Attrs>{}),
+__this.widget(new Row({}, [
+
+        __this.widget(new Column({}, [
+
+        __this.node('p', <__wml.Attrs>{}, [
 
         __document.createTextNode('Select the test files below:')
      ]),
