@@ -7,6 +7,19 @@ describe('button', function () {
             var e = document.getElementById('button0');
             assert_1.assert(e.disabled).true();
         });
+        it('should execute cli scripts', function (done) {
+            window.execCLIScript('echo', 'hello', function (e, msg) {
+                assert_1.assert(e).undefined();
+                assert_1.assert(msg).equal('hello');
+                done();
+            });
+        });
+        it('should not execute unknown cli scripts', function (done) {
+            window.execCLIScript('tree', '/', function (e, _) {
+                assert_1.assert(e).not.undefined();
+                done();
+            });
+        });
     });
 });
 //# sourceMappingURL=app_test.js.map
