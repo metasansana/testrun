@@ -9,65 +9,30 @@ JS_VARS:=./node_modules/@quenk/wml-widgets/lib/classNames.js
 COMPRESS:=$(if $(findstring yes,$(DEBUG)),,|$(UGLIFY))
 COMPRESS:=
 
+SRC_DIR:=src
+BUILD_DIR:=build
+TEST_DIR:=test
+
 .DELETE_ON_ERROR:
 
-./: public test native
+./: $(BUILD_DIR) $(TEST_DIR)
 	touch $@
 
-public: public/testrun.js public/testrun.css
+$(BUILD_DIR): $(SRC_DIR)/app\
+	      $(BUILD_DIR)/background\
+	      $(BUILD_DIR)/content\
+	      $(BUILD_DIR)/page\
+              $(BUILD_DIR)/node
 	touch $@
 
-public/testrun.js: lib
-	$(BROWSERIFY) lib/main.js $(COMPRESS) > $@
+include $(SRC_DIR)/app/build.mk
+include $(SRC_DIR)/background/build.mk
+include $(SRC_DIR)/content/build.mk 
+include $(SRC_DIR)/page/build.mk
+include $(SRC_DIR)/node/build.mk
+include $(TEST_DIR)/build.mk
 
-public/testrun.css: $(shell find src -type f -name \*.less)
-	$(LESSC) $(if $(findstring yes,$(DEBUG)),--source-map-less-inline,)  \
-	--js-vars=$(JS_VARS) src/main.less | $(CLEANCSS) > $@
-
-lib: $(shell find src -type f -name \*.ts -o -name \*.wml)
-	rm -R $@ || true 
-	cp -R -u src $@
-	$(WMLC) $@
-	$(TSC) --project $@
-
-	$(foreach script,$(shell find $@/scripts/page -name \*.js),\
-	  $(if $(findstring _bundle,$(script)),,\
-	  $(BROWSERIFY) $(script) $(COMPRESS) > \
-	  $(subst .js,,$(script))_bundle.js &&)) true
-
-test: test/public test/build
-	touch $@
-
-test/public: test/build 
-	$(eval FILES:=$(shell find test/build -name \*.js))
-	$(foreach f,$(FILES),\
-	  $(BROWSERIFY) $(f) > $@/$(notdir $(basename $(f))).js)
-	touch $@
-
-test/build: $(shell find test/src -type f)
-	rm -R $@ || true 
-	cp -R -u test/src $@
-	$(TSC) --project $@
-
-native: native/build
-	touch $@
-
-native/build: $(shell find native/src -type f)
-	rm -R $@ || true 
-	cp -R -u native/src $@
-	$(TSC) --project $@
-	chmod +x $@/main.js
-
-.PHONY: docs
-docs: lib
-	./node_modules/.bin/typedoc \
-	--mode modules \
-	--out $@ \
-	--tsconfig lib/tsconfig.json \
-	--excludeNotExported \
-	--excludePrivate && \
-	echo "" > docs/.nojekyll
-
+# Run the extension in a temporary browser instance.
 .PHONY: run
 run:
 	$(eval include .env)
