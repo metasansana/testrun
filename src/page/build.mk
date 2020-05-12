@@ -7,7 +7,7 @@ $(PAGE_BUILD_DIR): $(shell find $(PAGE_SRC_DIR) -type f -name \*.ts -o -name \*.
 	$(WMLC) $@
 	$(TSC) --project $@
 
-	$(foreach script,$(shell find $@/scripts/page -name \*.js),\
+	$(foreach script,$(shell find $@/ -name \*.js),\
 	  $(if $(findstring _bundle,$(script)),,\
 	  $(BROWSERIFY) $(script) $(COMPRESS) > \
 	  $(subst .js,,$(script))_bundle.js &&)) true

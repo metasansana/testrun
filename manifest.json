@@ -24,11 +24,11 @@
     ],
     "browser_specific_settings": {
 
-      "gecko": {
+        "gecko": {
 
-        "id": "testrun@trinistorm.org"
+            "id": "testrun@trinistorm.org"
 
-      }
+        }
 
     },
     "browser_action": {
@@ -42,16 +42,16 @@
 
         "scripts": [
 
-          "lib/scripts/background/extension.js"
+            "build/background/extension.js"
 
         ]
 
     },
     "web_accessible_resources": [
 
-        "public/*",
+        "src/app/public/*",
 
-        "lib/scripts/page/*"
+        "build/page/*"
 
     ]
 

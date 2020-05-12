@@ -259,7 +259,7 @@ export class Testrun {
             .tabs
             .create({
 
-                url: '/public/results.html'
+                url: '/src/app/public/results.html'
 
             })
             .then(tab =>
@@ -267,7 +267,7 @@ export class Testrun {
                     .tabs
                     .executeScript(<number>tab.id, {
 
-                        file: '/lib/scripts/content/init_result.js'
+                        file: '/build/content/init_result.js'
 
                     })
                     .then(() =>
@@ -337,7 +337,7 @@ export class Testrun {
                     .tabs
                     .executeScript(<number>tab.id, {
 
-                        file: '/lib/scripts/content/init.js'
+                        file: '/build/content/init.js'
 
                     })
                     .then(() =>

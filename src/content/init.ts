@@ -13,12 +13,12 @@
 
     const ID_TEST_SCRIPT = 'testrun-test-script';
 
-    const URL_MOCHA_JS = browser.runtime.getURL('/lib/app/public/mocha.js');
+    const URL_MOCHA_JS = browser.runtime.getURL('/src/app/public/mocha.js');
 
-    const URL_RUNNER_JS = browser.runtime.getURL('/lib/app/public/runner.js');
+    const URL_RUNNER_JS = browser.runtime.getURL('/src/app/public/runner.js');
 
     const URL_HANDLER_JS = browser.runtime.getURL(
-        '/lib/page/handler_bundle.js');
+        '/build/page/handler_bundle.js');
 
     const removeElementById = (w: Window, id: string) => {
 

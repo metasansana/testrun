@@ -129,13 +129,13 @@ var Testrun = /** @class */ (function () {
         browser
             .tabs
             .create({
-            url: '/public/results.html'
+            url: '/src/app/public/results.html'
         })
             .then(function (tab) {
             return browser
                 .tabs
                 .executeScript(tab.id, {
-                file: '/lib/scripts/content/init_result.js'
+                file: '/build/content/init_result.js'
             })
                 .then(function () {
                 return browser
@@ -185,7 +185,7 @@ var Testrun = /** @class */ (function () {
             return browser
                 .tabs
                 .executeScript(tab.id, {
-                file: '/lib/scripts/content/init.js'
+                file: '/build/content/init.js'
             })
                 .then(function () {
                 return browser

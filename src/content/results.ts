@@ -1,6 +1,6 @@
 (() => {
 
-    const URL_MOCHA_CSS = '/lib/app/public/mocha.css';
+    const URL_MOCHA_CSS = '/src/app/public/mocha.css';
 
     browser.tabs.insertCSS({
 

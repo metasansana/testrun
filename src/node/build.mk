@@ -6,3 +6,4 @@ $(NODE_BUILD_DIR): $(shell find $(NODE_SRC_DIR) -type f -name \*.ts )
 	cp -R -u $(NODE_SRC_DIR) $@
 	$(WMLC) $@
 	$(TSC) --project $@
+	chmod +x $@/main.js
