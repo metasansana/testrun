@@ -7,9 +7,9 @@
     var ID_MOCHA_SCRIPT = 'testrun-mocha-script';
     var ID_RUNNER_SCRIPT = 'testrun-runner';
     var ID_TEST_SCRIPT = 'testrun-test-script';
-    var URL_MOCHA_JS = browser.runtime.getURL('/lib/app/public/mocha.js');
-    var URL_RUNNER_JS = browser.runtime.getURL('/lib/app/public/runner.js');
-    var URL_HANDLER_JS = browser.runtime.getURL('/lib/page/handler_bundle.js');
+    var URL_MOCHA_JS = browser.runtime.getURL('/src/app/public/mocha.js');
+    var URL_RUNNER_JS = browser.runtime.getURL('/src/app/public/runner.js');
+    var URL_HANDLER_JS = browser.runtime.getURL('/build/page/handler_bundle.js');
     var removeElementById = function (w, id) {
         var e = w.document.getElementById(id);
         if (e != null) {

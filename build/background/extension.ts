@@ -7,7 +7,7 @@ browser.browserAction.onClicked.addListener((t: browser.tabs.Tab) => {
 
     browser.tabs.create({
 
-        url: '/lib/app/public/index.html',
+        url: '/src/app/public/index.html',
 
     });
 
