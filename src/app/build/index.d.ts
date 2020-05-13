@@ -6,22 +6,13 @@ import { Maybe } from '@quenk/noni/lib/data/maybe';
 import { Column } from '@quenk/wml-widgets/lib/data/table';
 import { TextChangedEvent } from '@quenk/wml-widgets/lib/control/text-field';
 import { FileChangedEvent } from '@quenk/wml-widgets/lib/control/file-input';
+import { Exec } from '@metasansana/testrun/lib/node/message';
 export declare const ID_MAIN = "main";
 export declare const ID_MOCHA = "mocha";
 export declare const ID_MOCHA_SCRIPT = "testrun-mocha-script";
 export declare const ID_TEST_SCRIPT = "testrun-test-script";
-export declare const MSG_NO_PARENT: string;
 export declare const URL_MOCHA_JS = "testrun/mocha.js";
 export declare const MSG_TYPE_RESULTS = "results";
-/**
- * CLIScriptRequest
- */
-export interface CLIScriptRequest {
-    id: string;
-    type: string;
-    name: string;
-    args: string;
-}
 /**
  * Message is the data structure we use to pass data between
  * the background, content and page contexts.
@@ -89,6 +80,11 @@ export declare class Testrun {
     handleMessage: (m: object) => void;
     static create(w: Window, a: Window): Testrun;
     /**
+     * isScriptPathSet detects whether the user has specified a path to read
+     * "execCLIScript" targets from.
+     */
+    isScriptPathSet(): boolean;
+    /**
      * @private
      */
     loadFromFiles(list: File[]): void;
@@ -109,7 +105,13 @@ export declare class Testrun {
      * showError alerts the user and dumps an error to the console.
      */
     showError(e: Error): void;
-    runCLIScript(e: CLIScriptRequest): void;
+    /**
+     * runCLIScript on behalf of the running test.
+     *
+     * This method is the bridge between the injected script and the CLI
+     * provided by this extension.
+     */
+    runCLIScript(e: Exec): void;
     /**
      * runSuite
      */

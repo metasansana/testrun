@@ -1,21 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 ///<reference path="../../../global.d.ts" />
+var nodeMessages = require("@metasansana/testrun/lib/node/message");
 var columns = require("./columns");
 var record_1 = require("@quenk/noni/lib/data/record");
 var maybe_1 = require("@quenk/noni/lib/data/maybe");
 var future_1 = require("@quenk/noni/lib/control/monad/future");
+var message_1 = require("@metasansana/testrun/lib/node/message");
 var app_1 = require("./view/app");
 exports.ID_MAIN = 'main';
 exports.ID_MOCHA = 'mocha';
 exports.ID_MOCHA_SCRIPT = 'testrun-mocha-script';
 exports.ID_TEST_SCRIPT = 'testrun-test-script';
-var MSG_EXEC_PATH_NOT_SET = 'You must set an exec path to run cli scripts!';
-var MSG_LOAD_FILES_FAILED = 'Unable to load the file(s) specified!';
-exports.MSG_NO_PARENT = 'Unable to find a parent window for this Testrun ' +
-    'instance. It may be that you have accessed the Testrun index file directly.' +
-    ' Close this window and run the Testrun extension on your app page or ' +
-    ' alternatively you can load Testrun using window.open() from your app.';
+var ERR_NAME_UNSAFE = "E001: Script name must match: (" + nodeMessages.REGEX_SAFE_STRING + ")!";
+var ERR_ARGS_UNSAFE = "E002: Script arguments must match: (" + nodeMessages.REGEX_SAFE_STRING + ")!";
+var ERR_SCRIPT_PATH_NOT_SET = "E003: No path for cli scripts set!";
+var ERR_LOAD_FILES_FAILED = "E004: Unable to load the file(s) specified!";
 exports.URL_MOCHA_JS = 'testrun/mocha.js';
 exports.MSG_TYPE_RESULTS = 'results';
 /**
@@ -76,11 +76,11 @@ var Testrun = /** @class */ (function () {
                 case exports.MSG_TYPE_RESULTS:
                     _this.showResults(msg);
                     break;
-                case 'testrun-exec-cli-script':
+                case nodeMessages.MSG_EXEC:
                     _this.runCLIScript(msg);
                     break;
-                case 'testrun-exec-cli-script-result':
-                case 'testrun-exec-cli-script-error':
+                case nodeMessages.MSG_EXEC_FAIL:
+                case nodeMessages.MSG_EXEC_RESULT:
                     if (_this.currentTab.isJust())
                         browser
                             .tabs
@@ -94,6 +94,13 @@ var Testrun = /** @class */ (function () {
     }
     Testrun.create = function (w, a) {
         return new Testrun(w, a);
+    };
+    /**
+     * isScriptPathSet detects whether the user has specified a path to read
+     * "execCLIScript" targets from.
+     */
+    Testrun.prototype.isScriptPathSet = function () {
+        return this.values.exec.value !== '';
     };
     /**
      * @private
@@ -155,18 +162,26 @@ var Testrun = /** @class */ (function () {
         alert("Error: " + e.message);
         error(e);
     };
+    /**
+     * runCLIScript on behalf of the running test.
+     *
+     * This method is the bridge between the injected script and the CLI
+     * provided by this extension.
+     */
     Testrun.prototype.runCLIScript = function (e) {
-        if (this.values.exec.value === '')
-            this.handleMessage({
-                id: e.id,
-                type: 'testrun-exec-cli-script-error',
-                message: MSG_EXEC_PATH_NOT_SET,
-                stack: ''
-            });
-        else
-            this.runner.postMessage(record_1.merge(e, {
-                name: this.values.exec.value + "/" + e.name
-            }));
+        if (this.isScriptPathSet()) {
+            this.handleMessage(new message_1.NewFail(e.id, ERR_SCRIPT_PATH_NOT_SET));
+        }
+        else {
+            if (!message_1.isCLISafe(e.name))
+                this.handleMessage(new message_1.NewFail(e.id, ERR_NAME_UNSAFE));
+            else if (!message_1.isCLISafe(e.args))
+                this.handleMessage(new message_1.NewFail(e.id, ERR_ARGS_UNSAFE));
+            else
+                this.runner.postMessage(record_1.merge(e, {
+                    name: this.values.exec.value + "/" + e.name
+                }));
+        }
     };
     /**
      * runSuite
@@ -238,7 +253,7 @@ var removeElementById = function (w, id) {
             e.parentNode.removeChild(e);
     });
 };
-var loadFromFilesFailed = function () { alert(MSG_LOAD_FILES_FAILED); };
+var loadFromFilesFailed = function () { alert(ERR_LOAD_FILES_FAILED); };
 var warn = function (msg) {
     return console.warn("[Testrun]: " + msg);
 };

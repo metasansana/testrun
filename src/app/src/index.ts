@@ -1,4 +1,5 @@
 ///<reference path="../../../global.d.ts" />
+import * as nodeMessages from '@metasansana/testrun/lib/node/message';
 import * as columns from './columns';
 
 import { View } from '@quenk/wml';
@@ -10,10 +11,20 @@ import {
     just,
     nothing
 } from '@quenk/noni/lib/data/maybe';
-import { Future, fromCallback, parallel } from '@quenk/noni/lib/control/monad/future';
+import {
+    Future,
+    fromCallback,
+    parallel
+} from '@quenk/noni/lib/control/monad/future';
 import { Column } from '@quenk/wml-widgets/lib/data/table';
 import { TextChangedEvent } from '@quenk/wml-widgets/lib/control/text-field';
 import { FileChangedEvent } from '@quenk/wml-widgets/lib/control/file-input';
+
+import {
+    Exec,
+    NewFail,
+    isCLISafe
+} from '@metasansana/testrun/lib/node/message';
 
 import { TestrunView } from './view/app';
 
@@ -22,33 +33,20 @@ export const ID_MOCHA = 'mocha';
 export const ID_MOCHA_SCRIPT = 'testrun-mocha-script';
 export const ID_TEST_SCRIPT = 'testrun-test-script';
 
-const MSG_EXEC_PATH_NOT_SET = 'You must set an exec path to run cli scripts!';
+const ERR_NAME_UNSAFE =
+    `E001: Script name must match: (${nodeMessages.REGEX_SAFE_STRING})!`;
 
-const MSG_LOAD_FILES_FAILED = 'Unable to load the file(s) specified!';
+const ERR_ARGS_UNSAFE =
+    `E002: Script arguments must match: (${nodeMessages.REGEX_SAFE_STRING})!`;
 
-export const MSG_NO_PARENT = 'Unable to find a parent window for this Testrun ' +
-    'instance. It may be that you have accessed the Testrun index file directly.' +
-    ' Close this window and run the Testrun extension on your app page or ' +
-    ' alternatively you can load Testrun using window.open() from your app.';
+const ERR_SCRIPT_PATH_NOT_SET =
+    `E003: No path for cli scripts set!`;
+
+const ERR_LOAD_FILES_FAILED = `E004: Unable to load the file(s) specified!`;
 
 export const URL_MOCHA_JS = 'testrun/mocha.js';
 
 export const MSG_TYPE_RESULTS = 'results';
-
-/**
- * CLIScriptRequest
- */
-export interface CLIScriptRequest {
-
-    id: string,
-
-    type: string,
-
-    name: string,
-
-    args: string
-
-}
 
 /**
  * Message is the data structure we use to pass data between 
@@ -184,12 +182,12 @@ export class Testrun {
                 this.showResults(msg);
                 break;
 
-            case 'testrun-exec-cli-script':
+            case nodeMessages.MSG_EXEC:
                 this.runCLIScript(<any>msg);
                 break;
 
-            case 'testrun-exec-cli-script-result':
-            case 'testrun-exec-cli-script-error':
+            case nodeMessages.MSG_EXEC_FAIL:
+            case nodeMessages.MSG_EXEC_RESULT:
                 if (this.currentTab.isJust())
                     browser
                         .tabs
@@ -207,6 +205,16 @@ export class Testrun {
     static create(w: Window, a: Window): Testrun {
 
         return new Testrun(w, a);
+
+    }
+
+    /**
+     * isScriptPathSet detects whether the user has specified a path to read
+     * "execCLIScript" targets from.
+     */
+    isScriptPathSet(): boolean {
+
+        return this.values.exec.value !== '';
 
     }
 
@@ -294,24 +302,30 @@ export class Testrun {
 
     }
 
-    runCLIScript(e: CLIScriptRequest) {
+    /**
+     * runCLIScript on behalf of the running test.
+     *
+     * This method is the bridge between the injected script and the CLI
+     * provided by this extension.
+     */
+    runCLIScript(e: Exec): void {
 
-        if (this.values.exec.value === '')
-            this.handleMessage({
+        if (this.isScriptPathSet()) {
 
-                id: e.id,
+            this.handleMessage(new NewFail(e.id, ERR_SCRIPT_PATH_NOT_SET));
 
-                type: 'testrun-exec-cli-script-error',
+        } else {
 
-                message: MSG_EXEC_PATH_NOT_SET,
+            if (!isCLISafe(e.name))
+                this.handleMessage(new NewFail(e.id, ERR_NAME_UNSAFE));
+            else if (!isCLISafe(e.args))
+                this.handleMessage(new NewFail(e.id, ERR_ARGS_UNSAFE));
+            else
+                this.runner.postMessage(merge(e, {
+                    name: `${this.values.exec.value}/${e.name}`
+                }));
 
-                stack: ''
-
-            });
-        else
-            this.runner.postMessage(merge(e, {
-                name: `${this.values.exec.value}/${e.name}`
-            }));
+        }
 
     }
 
@@ -409,7 +423,7 @@ const removeElementById = (w: Window, id: string) =>
 
         });
 
-const loadFromFilesFailed = () => { alert(MSG_LOAD_FILES_FAILED); }
+const loadFromFilesFailed = () => { alert(ERR_LOAD_FILES_FAILED); }
 
 const warn = (msg: string) =>
     console.warn(`[Testrun]: ${msg}`);

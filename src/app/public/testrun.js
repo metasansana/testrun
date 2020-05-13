@@ -7599,6 +7599,59 @@ process.umask = function() { return 0; };
 },{}],52:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.MSG_EXEC = 'testrun-exec-cli-script';
+exports.MSG_EXEC_RESULT = 'testrun-exec-cli-script-result';
+exports.MSG_EXEC_FAIL = 'testrun-exec-cli-script-error';
+exports.REGEX_SAFE_STRING = /[\w]+/;
+/**
+ * NewExec constructor.
+ */
+var NewExec = /** @class */ (function () {
+    function NewExec(id, name, args) {
+        this.id = id;
+        this.name = name;
+        this.args = args;
+        this.type = exports.MSG_EXEC;
+    }
+    return NewExec;
+}());
+exports.NewExec = NewExec;
+/**
+ * NewFail constructor.
+ */
+var NewFail = /** @class */ (function () {
+    function NewFail(id, message) {
+        this.id = id;
+        this.message = message;
+        this.type = exports.MSG_EXEC_FAIL;
+    }
+    return NewFail;
+}());
+exports.NewFail = NewFail;
+/**
+ * NewResult constructor.
+ */
+var NewResult = /** @class */ (function () {
+    function NewResult(id, value) {
+        this.id = id;
+        this.value = value;
+        this.type = exports.MSG_EXEC_RESULT;
+    }
+    return NewResult;
+}());
+exports.NewResult = NewResult;
+/**
+ * isCLISafe tests whether a string passed is "safe" for use on the cli.
+ *
+ * Safe in this regards means the string complies with REGEX_SAFE_STRING.
+ */
+exports.isCLISafe = function (value) {
+    return value.split(' ').every(function (a) { return exports.REGEX_SAFE_STRING.test(a); });
+};
+
+},{}],53:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var columns_1 = require("./view/columns");
 /**
  * NameColumn
@@ -7630,25 +7683,25 @@ var ActionColumn = /** @class */ (function () {
 }());
 exports.ActionColumn = ActionColumn;
 
-},{"./view/columns":56}],53:[function(require,module,exports){
+},{"./view/columns":57}],54:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 ///<reference path="../../../global.d.ts" />
+var nodeMessages = require("@metasansana/testrun/lib/node/message");
 var columns = require("./columns");
 var record_1 = require("@quenk/noni/lib/data/record");
 var maybe_1 = require("@quenk/noni/lib/data/maybe");
 var future_1 = require("@quenk/noni/lib/control/monad/future");
+var message_1 = require("@metasansana/testrun/lib/node/message");
 var app_1 = require("./view/app");
 exports.ID_MAIN = 'main';
 exports.ID_MOCHA = 'mocha';
 exports.ID_MOCHA_SCRIPT = 'testrun-mocha-script';
 exports.ID_TEST_SCRIPT = 'testrun-test-script';
-var MSG_EXEC_PATH_NOT_SET = 'You must set an exec path to run cli scripts!';
-var MSG_LOAD_FILES_FAILED = 'Unable to load the file(s) specified!';
-exports.MSG_NO_PARENT = 'Unable to find a parent window for this Testrun ' +
-    'instance. It may be that you have accessed the Testrun index file directly.' +
-    ' Close this window and run the Testrun extension on your app page or ' +
-    ' alternatively you can load Testrun using window.open() from your app.';
+var ERR_NAME_UNSAFE = "E001: Script name must match: (" + nodeMessages.REGEX_SAFE_STRING + ")!";
+var ERR_ARGS_UNSAFE = "E002: Script arguments must match: (" + nodeMessages.REGEX_SAFE_STRING + ")!";
+var ERR_SCRIPT_PATH_NOT_SET = "E003: No path for cli scripts set!";
+var ERR_LOAD_FILES_FAILED = "E004: Unable to load the file(s) specified!";
 exports.URL_MOCHA_JS = 'testrun/mocha.js';
 exports.MSG_TYPE_RESULTS = 'results';
 /**
@@ -7709,11 +7762,11 @@ var Testrun = /** @class */ (function () {
                 case exports.MSG_TYPE_RESULTS:
                     _this.showResults(msg);
                     break;
-                case 'testrun-exec-cli-script':
+                case nodeMessages.MSG_EXEC:
                     _this.runCLIScript(msg);
                     break;
-                case 'testrun-exec-cli-script-result':
-                case 'testrun-exec-cli-script-error':
+                case nodeMessages.MSG_EXEC_FAIL:
+                case nodeMessages.MSG_EXEC_RESULT:
                     if (_this.currentTab.isJust())
                         browser
                             .tabs
@@ -7727,6 +7780,13 @@ var Testrun = /** @class */ (function () {
     }
     Testrun.create = function (w, a) {
         return new Testrun(w, a);
+    };
+    /**
+     * isScriptPathSet detects whether the user has specified a path to read
+     * "execCLIScript" targets from.
+     */
+    Testrun.prototype.isScriptPathSet = function () {
+        return this.values.exec.value !== '';
     };
     /**
      * @private
@@ -7788,18 +7848,26 @@ var Testrun = /** @class */ (function () {
         alert("Error: " + e.message);
         error(e);
     };
+    /**
+     * runCLIScript on behalf of the running test.
+     *
+     * This method is the bridge between the injected script and the CLI
+     * provided by this extension.
+     */
     Testrun.prototype.runCLIScript = function (e) {
-        if (this.values.exec.value === '')
-            this.handleMessage({
-                id: e.id,
-                type: 'testrun-exec-cli-script-error',
-                message: MSG_EXEC_PATH_NOT_SET,
-                stack: ''
-            });
-        else
-            this.runner.postMessage(record_1.merge(e, {
-                name: this.values.exec.value + "/" + e.name
-            }));
+        if (this.isScriptPathSet()) {
+            this.handleMessage(new message_1.NewFail(e.id, ERR_SCRIPT_PATH_NOT_SET));
+        }
+        else {
+            if (!message_1.isCLISafe(e.name))
+                this.handleMessage(new message_1.NewFail(e.id, ERR_NAME_UNSAFE));
+            else if (!message_1.isCLISafe(e.args))
+                this.handleMessage(new message_1.NewFail(e.id, ERR_ARGS_UNSAFE));
+            else
+                this.runner.postMessage(record_1.merge(e, {
+                    name: this.values.exec.value + "/" + e.name
+                }));
+        }
     };
     /**
      * runSuite
@@ -7871,7 +7939,7 @@ var removeElementById = function (w, id) {
             e.parentNode.removeChild(e);
     });
 };
-var loadFromFilesFailed = function () { alert(MSG_LOAD_FILES_FAILED); };
+var loadFromFilesFailed = function () { alert(ERR_LOAD_FILES_FAILED); };
 var warn = function (msg) {
     return console.warn("[Testrun]: " + msg);
 };
@@ -7879,14 +7947,14 @@ var error = function (e) {
     return console.error("[Testrun]: " + e.message, e);
 };
 
-},{"./columns":52,"./view/app":55,"@quenk/noni/lib/control/monad/future":2,"@quenk/noni/lib/data/maybe":8,"@quenk/noni/lib/data/record":9}],54:[function(require,module,exports){
+},{"./columns":53,"./view/app":56,"@metasansana/testrun/lib/node/message":52,"@quenk/noni/lib/control/monad/future":2,"@quenk/noni/lib/data/maybe":8,"@quenk/noni/lib/data/record":9}],55:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var _1 = require("./");
 var app = _1.Testrun.create(window, window.opener);
 app.run();
 
-},{"./":53}],55:[function(require,module,exports){
+},{"./":54}],56:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var __document = require("@quenk/wml/lib/dom");
@@ -8063,7 +8131,7 @@ var TestrunView = /** @class */ (function () {
 }());
 exports.TestrunView = TestrunView;
 
-},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/file-input":20,"@quenk/wml-widgets/lib/control/text-field":29,"@quenk/wml-widgets/lib/data/table":37,"@quenk/wml-widgets/lib/layout/grid":41,"@quenk/wml-widgets/lib/layout/main":44,"@quenk/wml/lib/dom":49}],56:[function(require,module,exports){
+},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/file-input":20,"@quenk/wml-widgets/lib/control/text-field":29,"@quenk/wml-widgets/lib/data/table":37,"@quenk/wml-widgets/lib/layout/grid":41,"@quenk/wml-widgets/lib/layout/main":44,"@quenk/wml/lib/dom":49}],57:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var __document = require("@quenk/wml/lib/dom");
@@ -8200,4 +8268,4 @@ var ActionColumnView = /** @class */ (function () {
 }());
 exports.ActionColumnView = ActionColumnView;
 
-},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/button":17,"@quenk/wml/lib/dom":49}]},{},[54]);
+},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/button":17,"@quenk/wml/lib/dom":49}]},{},[55]);
