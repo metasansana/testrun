@@ -17,4 +17,4 @@
             run(m);
     });
 })();
-//# sourceMappingURL=init_result.js.map
+//# sourceMappingURL=initTestResultEnv.js.map

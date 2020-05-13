@@ -1,6 +1,7 @@
 (() => {
 
     const ID_MAIN = 'main';
+
     const ID_MOCHA = 'mocha';
 
     const run = ({ code }: { code: string }) => {
