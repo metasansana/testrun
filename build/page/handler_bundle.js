@@ -1,11 +1,10 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 ///<reference path="../../global.d.ts" />
+var message_1 = require("@metasansana/testrun/lib/node/message");
 (function () {
     var ID_TESTRUN_TEST = 'test-run-test';
-    var MSG_EXEC = 'testrun-exec-cli-script';
-    var MSG_EXEC_RESULT = 'testrun-exec-cli-script-result';
-    var MSG_EXEC_ERROR = 'testrun-exec-cli-script-error';
     var runMocha = function (_a) {
         var code = _a.code;
         var prev = document.getElementById(ID_TESTRUN_TEST);
@@ -31,7 +30,7 @@
     var pending = [];
     window.execCLIScript = function (name, args, cb) {
         var id = pending.push(cb) - 1;
-        var type = MSG_EXEC;
+        var type = message_1.MSG_EXEC;
         var detail = {
             id: id,
             type: type,
@@ -43,12 +42,12 @@
     };
     var handleCLIScriptResult = function (evt) {
         if (evt.detail)
-            if ((evt.detail.type === MSG_EXEC_RESULT) ||
-                (evt.detail.type === MSG_EXEC_ERROR)) {
+            if ((evt.detail.type === message_1.MSG_EXEC_RESULT) ||
+                (evt.detail.type === message_1.MSG_EXEC_FAIL)) {
                 var cb = pending[evt.detail.id];
                 if (cb != null) {
                     pending.splice(evt.detail.id, 1);
-                    if (evt.detail.type === MSG_EXEC_ERROR) {
+                    if (evt.detail.type === message_1.MSG_EXEC_FAIL) {
                         cb(new Error(evt.detail.message));
                     }
                     else {
@@ -60,11 +59,11 @@
     window
         .document
         .documentElement
-        .addEventListener(MSG_EXEC_RESULT, handleCLIScriptResult);
+        .addEventListener(message_1.MSG_EXEC_RESULT, handleCLIScriptResult);
     window
         .document
         .documentElement
-        .addEventListener(MSG_EXEC_ERROR, handleCLIScriptResult);
+        .addEventListener(message_1.MSG_EXEC_FAIL, handleCLIScriptResult);
     window.addEventListener('message', function (e) {
         //TODO: This is unsafe as we are not verifying the source of these messages.
         //     A solution must be found in future releases!.
@@ -84,5 +83,58 @@
         window.postMessage({ type: 'mocha-ready' }, '*');
     }, 1000);
 })();
+
+},{"@metasansana/testrun/lib/node/message":2}],2:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MSG_EXEC = 'testrun-exec-cli-script';
+exports.MSG_EXEC_RESULT = 'testrun-exec-cli-script-result';
+exports.MSG_EXEC_FAIL = 'testrun-exec-cli-script-error';
+exports.REGEX_SAFE_STRING = /[\w]+/;
+/**
+ * NewExec constructor.
+ */
+var NewExec = /** @class */ (function () {
+    function NewExec(id, name, args) {
+        this.id = id;
+        this.name = name;
+        this.args = args;
+        this.type = exports.MSG_EXEC;
+    }
+    return NewExec;
+}());
+exports.NewExec = NewExec;
+/**
+ * NewFail constructor.
+ */
+var NewFail = /** @class */ (function () {
+    function NewFail(id, message) {
+        this.id = id;
+        this.message = message;
+        this.type = exports.MSG_EXEC_FAIL;
+    }
+    return NewFail;
+}());
+exports.NewFail = NewFail;
+/**
+ * NewResult constructor.
+ */
+var NewResult = /** @class */ (function () {
+    function NewResult(id, value) {
+        this.id = id;
+        this.value = value;
+        this.type = exports.MSG_EXEC_RESULT;
+    }
+    return NewResult;
+}());
+exports.NewResult = NewResult;
+/**
+ * isCLISafe tests whether a string passed is "safe" for use on the cli.
+ *
+ * Safe in this regards means the string complies with REGEX_SAFE_STRING.
+ */
+exports.isCLISafe = function (value) {
+    return value.split(' ').every(function (a) { return exports.REGEX_SAFE_STRING.test(a); });
+};
 
 },{}]},{},[1]);

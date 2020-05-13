@@ -1,10 +1,9 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 ///<reference path="../../global.d.ts" />
+var message_1 = require("@metasansana/testrun/lib/node/message");
 (function () {
     var ID_TESTRUN_TEST = 'test-run-test';
-    var MSG_EXEC = 'testrun-exec-cli-script';
-    var MSG_EXEC_RESULT = 'testrun-exec-cli-script-result';
-    var MSG_EXEC_ERROR = 'testrun-exec-cli-script-error';
     var runMocha = function (_a) {
         var code = _a.code;
         var prev = document.getElementById(ID_TESTRUN_TEST);
@@ -30,7 +29,7 @@
     var pending = [];
     window.execCLIScript = function (name, args, cb) {
         var id = pending.push(cb) - 1;
-        var type = MSG_EXEC;
+        var type = message_1.MSG_EXEC;
         var detail = {
             id: id,
             type: type,
@@ -42,12 +41,12 @@
     };
     var handleCLIScriptResult = function (evt) {
         if (evt.detail)
-            if ((evt.detail.type === MSG_EXEC_RESULT) ||
-                (evt.detail.type === MSG_EXEC_ERROR)) {
+            if ((evt.detail.type === message_1.MSG_EXEC_RESULT) ||
+                (evt.detail.type === message_1.MSG_EXEC_FAIL)) {
                 var cb = pending[evt.detail.id];
                 if (cb != null) {
                     pending.splice(evt.detail.id, 1);
-                    if (evt.detail.type === MSG_EXEC_ERROR) {
+                    if (evt.detail.type === message_1.MSG_EXEC_FAIL) {
                         cb(new Error(evt.detail.message));
                     }
                     else {
@@ -59,11 +58,11 @@
     window
         .document
         .documentElement
-        .addEventListener(MSG_EXEC_RESULT, handleCLIScriptResult);
+        .addEventListener(message_1.MSG_EXEC_RESULT, handleCLIScriptResult);
     window
         .document
         .documentElement
-        .addEventListener(MSG_EXEC_ERROR, handleCLIScriptResult);
+        .addEventListener(message_1.MSG_EXEC_FAIL, handleCLIScriptResult);
     window.addEventListener('message', function (e) {
         //TODO: This is unsafe as we are not verifying the source of these messages.
         //     A solution must be found in future releases!.
