@@ -60,9 +60,7 @@ const processChunks = () => {
 
                                 type: 'testrun-exec-cli-script-error',
 
-                                message: e.message,
-
-                                stack: e.stack
+                                message: e.message
 
                             });
 
