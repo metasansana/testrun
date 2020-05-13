@@ -44,9 +44,7 @@ const ERR_SCRIPT_PATH_NOT_SET =
 
 const ERR_LOAD_FILES_FAILED = `E004: Unable to load the file(s) specified!`;
 
-export const URL_MOCHA_JS = 'testrun/mocha.js';
-
-export const MSG_TYPE_RESULTS = 'results';
+const MSG_TYPE_RESULTS = 'results';
 
 /**
  * Message is the data structure we use to pass data between 
@@ -170,7 +168,13 @@ export class Testrun {
     };
 
     /**
-     * handleMessage dispatches messages received via the postMessage() api.
+     * handleMessage received from the message passing hooks.
+     *
+     * Messages may come from:
+     * 1. Page scripts.
+     * 2. Content scripts.
+     * 3. Native scripts.
+     * 4. This.
      */
     handleMessage = (m: object) => {
 
@@ -310,7 +314,7 @@ export class Testrun {
      */
     runCLIScript(e: Exec): void {
 
-        if (this.isScriptPathSet()) {
+        if (!this.isScriptPathSet()) {
 
             this.handleMessage(new NewFail(e.id, ERR_SCRIPT_PATH_NOT_SET));
 
@@ -351,7 +355,7 @@ export class Testrun {
                     .tabs
                     .executeScript(<number>tab.id, {
 
-                        file: '/build/content/init.js'
+                        file: '/build/content/initTestEnvironment.js'
 
                     })
                     .then(() =>

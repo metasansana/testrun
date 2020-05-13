@@ -16,8 +16,7 @@ var ERR_NAME_UNSAFE = "E001: Script name must match: (" + nodeMessages.REGEX_SAF
 var ERR_ARGS_UNSAFE = "E002: Script arguments must match: (" + nodeMessages.REGEX_SAFE_STRING + ")!";
 var ERR_SCRIPT_PATH_NOT_SET = "E003: No path for cli scripts set!";
 var ERR_LOAD_FILES_FAILED = "E004: Unable to load the file(s) specified!";
-exports.URL_MOCHA_JS = 'testrun/mocha.js';
-exports.MSG_TYPE_RESULTS = 'results';
+var MSG_TYPE_RESULTS = 'results';
 /**
  * Testrun
  */
@@ -68,12 +67,18 @@ var Testrun = /** @class */ (function () {
             }
         };
         /**
-         * handleMessage dispatches messages received via the postMessage() api.
+         * handleMessage received from the message passing hooks.
+         *
+         * Messages may come from:
+         * 1. Page scripts.
+         * 2. Content scripts.
+         * 3. Native scripts.
+         * 4. This.
          */
         this.handleMessage = function (m) {
             var msg = m;
             switch (msg.type) {
-                case exports.MSG_TYPE_RESULTS:
+                case MSG_TYPE_RESULTS:
                     _this.showResults(msg);
                     break;
                 case nodeMessages.MSG_EXEC:
@@ -169,7 +174,7 @@ var Testrun = /** @class */ (function () {
      * provided by this extension.
      */
     Testrun.prototype.runCLIScript = function (e) {
-        if (this.isScriptPathSet()) {
+        if (!this.isScriptPathSet()) {
             this.handleMessage(new message_1.NewFail(e.id, ERR_SCRIPT_PATH_NOT_SET));
         }
         else {
@@ -200,7 +205,7 @@ var Testrun = /** @class */ (function () {
             return browser
                 .tabs
                 .executeScript(tab.id, {
-                file: '/build/content/init.js'
+                file: '/build/content/initTestEnvironment.js'
             })
                 .then(function () {
                 return browser

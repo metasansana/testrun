@@ -11,8 +11,6 @@ export declare const ID_MAIN = "main";
 export declare const ID_MOCHA = "mocha";
 export declare const ID_MOCHA_SCRIPT = "testrun-mocha-script";
 export declare const ID_TEST_SCRIPT = "testrun-test-script";
-export declare const URL_MOCHA_JS = "testrun/mocha.js";
-export declare const MSG_TYPE_RESULTS = "results";
 /**
  * Message is the data structure we use to pass data between
  * the background, content and page contexts.
@@ -75,7 +73,13 @@ export declare class Testrun {
         };
     };
     /**
-     * handleMessage dispatches messages received via the postMessage() api.
+     * handleMessage received from the message passing hooks.
+     *
+     * Messages may come from:
+     * 1. Page scripts.
+     * 2. Content scripts.
+     * 3. Native scripts.
+     * 4. This.
      */
     handleMessage: (m: object) => void;
     static create(w: Window, a: Window): Testrun;
