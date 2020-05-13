@@ -1,0 +1,19 @@
+{
+  "name": "@metasansana/testrun",
+
+  "version": "0.0.1",
+
+  "private": true,
+
+  "description": "Common code for the testrun extension.",
+
+  "scripts": {
+
+    "test": "echo \"Error: no test specified\" && exit 1"
+
+  },
+  "author": "Lasana Murray <lmurray@trinistorm.com> (http://trinistorm.org)",
+
+  "license": "Apache-2.0"
+
+}

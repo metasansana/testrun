@@ -1,5 +1,6 @@
 {
-  "name": "testrun",
+  "name": "@metasansana/testrun-extension",
+  "private": true,
   "version": "0.0.1",
   "description": "Interface for running mocha tests files against a browser side app.",
   "main": "index.js",
@@ -9,6 +10,8 @@
   "author": "Lasana Murray <info@quenk.com> (http://quenk.com)",
   "license": "Apache-2.0",
   "dependencies": {
+    "@metasansana/testrun": "file:packages/testrun",
+    "@private/testrun": "file:packages/testrun",
     "@quenk/noni": "^1.39.1",
     "@types/firefox": "0.0.29"
   },

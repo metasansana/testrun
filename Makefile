@@ -12,6 +12,9 @@ COMPRESS:=
 SRC_DIR:=src
 BUILD_DIR:=build
 TEST_DIR:=test
+PACKAGES_DIR:=packages
+
+TESTRUN_DIR:=$(PACKAGES_DIR)/testrun
 
 .DELETE_ON_ERROR:
 
@@ -25,6 +28,7 @@ $(BUILD_DIR): $(SRC_DIR)/app\
               $(BUILD_DIR)/node
 	touch $@
 
+include $(PACKAGES_DIR)/testrun/build.mk
 include $(SRC_DIR)/app/build.mk
 include $(SRC_DIR)/background/build.mk
 include $(SRC_DIR)/content/build.mk 
