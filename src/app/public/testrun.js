@@ -7833,7 +7833,7 @@ var Testrun = /** @class */ (function () {
             return browser
                 .tabs
                 .executeScript(tab.id, {
-                file: '/build/content/init_result.js'
+                file: '/build/content/initTestResultEnv.js'
             })
                 .then(function () {
                 return browser
@@ -7891,7 +7891,7 @@ var Testrun = /** @class */ (function () {
             return browser
                 .tabs
                 .executeScript(tab.id, {
-                file: '/build/content/initTestEnvironment.js'
+                file: '/build/content/initTestEnv.js'
             })
                 .then(function () {
                 return browser

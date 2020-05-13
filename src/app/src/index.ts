@@ -279,7 +279,7 @@ export class Testrun {
                     .tabs
                     .executeScript(<number>tab.id, {
 
-                        file: '/build/content/init_result.js'
+                        file: '/build/content/initTestResultEnv.js'
 
                     })
                     .then(() =>
@@ -355,7 +355,7 @@ export class Testrun {
                     .tabs
                     .executeScript(<number>tab.id, {
 
-                        file: '/build/content/initTestEnvironment.js'
+                        file: '/build/content/initTestEnv.js'
 
                     })
                     .then(() =>
