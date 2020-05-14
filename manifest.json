@@ -17,6 +17,8 @@
 
         "activeTab",
 
+        "tabs",
+
         "<all_urls>",
 
         "nativeMessaging"
