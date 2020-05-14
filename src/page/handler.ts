@@ -1,13 +1,13 @@
 ///<reference path="../../global.d.ts" />
+import {
+    MSG_EXEC,
+    MSG_EXEC_RESULT,
+    MSG_EXEC_FAIL
+} from '@metasansana/testrun/lib/node/message';
+
 (() => {
 
     const ID_TESTRUN_TEST = 'test-run-test';
-
-    const MSG_EXEC = 'testrun-exec-cli-script';
-
-    const MSG_EXEC_RESULT = 'testrun-exec-cli-script-result';
-
-    const MSG_EXEC_ERROR = 'testrun-exec-cli-script-error';
 
     const runMocha = ({ code }: { code: string }) => {
 
@@ -77,7 +77,7 @@
 
         if (evt.detail)
             if ((evt.detail.type === MSG_EXEC_RESULT) ||
-                (evt.detail.type === MSG_EXEC_ERROR)) {
+                (evt.detail.type === MSG_EXEC_FAIL)) {
 
                 var cb = pending[evt.detail.id];
 
@@ -85,7 +85,7 @@
 
                     pending.splice(evt.detail.id, 1);
 
-                    if (evt.detail.type === MSG_EXEC_ERROR) {
+                    if (evt.detail.type === MSG_EXEC_FAIL) {
 
                         cb(new Error(evt.detail.message));
 
@@ -109,7 +109,7 @@
     window
         .document
         .documentElement
-        .addEventListener(MSG_EXEC_ERROR, handleCLIScriptResult);
+        .addEventListener(MSG_EXEC_FAIL, handleCLIScriptResult);
 
     window.addEventListener('message', e => {
 
