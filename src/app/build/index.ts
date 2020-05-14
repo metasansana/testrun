@@ -1,5 +1,6 @@
 ///<reference path="../../../global.d.ts" />
 import * as nodeMessages from '@metasansana/testrun/lib/node/message';
+import * as bgMessages from '@metasansana/testrun/lib/background/message';
 import * as columns from './columns';
 
 import { View } from '@quenk/wml';
@@ -25,6 +26,7 @@ import {
     NewFail,
     isCLISafe
 } from '@metasansana/testrun/lib/node/message';
+import { TargetTab } from '@metasansana/testrun/lib/background/message';
 
 import { TestrunView } from './view/app';
 
@@ -89,9 +91,11 @@ export class Testrun {
 
     tab: number = -1;
 
-    currentTab: Maybe<browser.tabs.Tab> = nothing();
+    targetTab: Maybe<browser.tabs.Tab> = nothing();
 
-    runner = browser.runtime.connectNative('testrun_native');
+    background = browser.runtime.connect();
+
+    node = browser.runtime.connectNative('testrun_native');
 
     values = {
 
@@ -101,7 +105,7 @@ export class Testrun {
 
             label: 'App URL',
 
-            value: 'http://localhost:8080',
+            value: '',
 
             onChange: (e: TextChangedEvent) => {
 
@@ -168,6 +172,16 @@ export class Testrun {
     };
 
     /**
+     * handleError alerts the user and dumps an error to the console.
+     */
+    handleError = (e: Error) => {
+
+        alert(`Error: ${e.message}`);
+        error(e);
+
+    }
+
+    /**
      * handleMessage received from the message passing hooks.
      *
      * Messages may come from:
@@ -192,10 +206,16 @@ export class Testrun {
 
             case nodeMessages.MSG_EXEC_FAIL:
             case nodeMessages.MSG_EXEC_RESULT:
-                if (this.currentTab.isJust())
+                if (this.targetTab.isJust())
                     browser
                         .tabs
-                        .sendMessage(<number>this.currentTab.get().id, msg);
+                        .sendMessage(<number>this.targetTab.get().id, msg);
+                break;
+
+            case bgMessages.MSG_TARGET_TAB:
+                this
+                    .updateURLFromTab((<TargetTab>m).id)
+                    .catch(this.handleError);
                 break;
 
             default:
@@ -219,6 +239,107 @@ export class Testrun {
     isScriptPathSet(): boolean {
 
         return this.values.exec.value !== '';
+
+    }
+
+    /**
+     * createTargetTab is used to create a new tab for testing.
+     *
+     * This is only used if we detect the targetTab is not set.
+     */
+    createTargetTab(): Promise<browser.tabs.Tab> {
+
+        return browser
+            .tabs
+            .create({ url: this.values.url.value })
+            .then((tab: browser.tabs.Tab) => {
+
+                this.targetTab = just(tab);
+
+                return tab;
+
+            });
+
+    }
+
+
+    /**
+     * updateURLFromTab attempts to update the target url using the tab
+     * id specified.
+     */
+    updateURLFromTab(id: number): Promise<void> {
+
+        return browser
+            .tabs
+            .get(id)
+            .then((t: browser.tabs.Tab) => {
+
+                if (t.url != null) {
+
+                    this.values.url.value = t.url;
+
+                    this.view.invalidate();
+
+                }
+
+            });
+
+    }
+
+    /**
+     * showResults parses the html from the results and displays it
+     * in the main UI.
+     */
+    showResults(msg: Message): void {
+
+        let code = msg.value || '';
+
+        browser
+            .tabs
+            .create({
+
+                url: '/src/app/public/results.html'
+
+            })
+            .then(tab =>
+                browser
+                    .tabs
+                    .executeScript(<number>tab.id, {
+
+                        file: '/build/content/initTestResultEnv.js'
+
+                    })
+                    .then(() =>
+                        browser
+                            .tabs
+                            .sendMessage(<number>tab.id, {
+
+                                type: 'run',
+
+                                code: code
+
+                            })))
+            .catch(this.handleError);
+
+    }
+
+    /**
+     * show the application.
+     */
+    show() {
+
+        let main = <HTMLElement>this.window.document.getElementById(ID_MAIN);
+
+        if (main != null) {
+
+            main.appendChild(<Node>this.view.render());
+
+        } else {
+
+            return this.handleError(new Error
+                (`Missing "${ID_MAIN}" id in application document!`));
+
+        }
 
     }
 
@@ -260,53 +381,6 @@ export class Testrun {
     }
 
     /**
-     * showResults parses the html from the results and displays it
-     * in the main UI.
-     */
-    showResults(msg: Message): void {
-
-        let code = msg.value || '';
-
-        browser
-            .tabs
-            .create({
-
-                url: '/src/app/public/results.html'
-
-            })
-            .then(tab =>
-                browser
-                    .tabs
-                    .executeScript(<number>tab.id, {
-
-                        file: '/build/content/initTestResultEnv.js'
-
-                    })
-                    .then(() =>
-                        browser
-                            .tabs
-                            .sendMessage(<number>tab.id, {
-
-                                type: 'run',
-
-                                code: code
-
-                            })))
-            .catch(e => this.showError(e));
-
-    }
-
-    /**
-     * showError alerts the user and dumps an error to the console.
-     */
-    showError(e: Error): void {
-
-        alert(`Error: ${e.message}`);
-        error(e);
-
-    }
-
-    /**
      * runCLIScript on behalf of the running test.
      *
      * This method is the bridge between the injected script and the CLI
@@ -325,7 +399,7 @@ export class Testrun {
             else if (!isCLISafe(e.args))
                 this.handleMessage(new NewFail(e.id, ERR_ARGS_UNSAFE));
             else
-                this.runner.postMessage(merge(e, {
+                this.node.postMessage(merge(e, {
                     name: `${this.values.exec.value}/${e.name}`
                 }));
 
@@ -338,18 +412,8 @@ export class Testrun {
      */
     runSuite(s: Suite): void {
 
-        browser.runtime.onMessage.addListener(this.handleMessage);
-
-        browser
-            .tabs
-            .create({ url: this.values.url.value })
-            .then((tab: browser.tabs.Tab) => {
-
-                this.currentTab = just(tab);
-
-                return tab;
-
-            })
+        this
+            .createTargetTab()
             .then(tab =>
                 browser
                     .tabs
@@ -368,7 +432,7 @@ export class Testrun {
                                 code: s.code
 
                             })))
-            .catch(e => this.showError(e));
+            .catch(this.handleError);
 
     }
 
@@ -377,20 +441,13 @@ export class Testrun {
      */
     run(): void {
 
-        let main = <HTMLElement>this.window.document.getElementById(ID_MAIN);
+        browser.runtime.onMessage.addListener(this.handleMessage);
 
-        if (main != null) {
+        this.node.onMessage.addListener(this.handleMessage);
 
-            main.appendChild(<Node>this.view.render());
+        this.background.onMessage.addListener(this.handleMessage);
 
-            this.runner.onMessage.addListener(this.handleMessage);
-
-        } else {
-
-            return this.showError(new Error
-                (`Missing "${ID_MAIN}" id in application document!`));
-
-        }
+        this.show();
 
     }
 

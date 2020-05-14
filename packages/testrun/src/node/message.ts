@@ -1,3 +1,5 @@
+import { Message } from '../message';
+
 export const MSG_EXEC = 'testrun-exec-cli-script';
 export const MSG_EXEC_RESULT = 'testrun-exec-cli-script-result';
 export const MSG_EXEC_FAIL = 'testrun-exec-cli-script-error';
@@ -5,27 +7,22 @@ export const MSG_EXEC_FAIL = 'testrun-exec-cli-script-error';
 export const REGEX_SAFE_STRING = /[\w]+/
 
 /**
- * Message is the base structure of messages exchanged between the node
+ * NodeMessage is the base structure of messages exchanged between the node
  * backend and the extension.
  */
-export interface Message {
+export interface NodeMessage extends Message {
 
     /**
      * id of the target callback.
      */
     id: number,
 
-    /**
-     * type indicating the type of the message.
-     */
-    type: string
-
 }
 
 /**
  * Exec message structure.
  */
-export interface Exec extends Message {
+export interface Exec extends NodeMessage {
 
     /**
      * name of the script to be executed.
@@ -43,7 +40,7 @@ export interface Exec extends Message {
 /**
  * Fail message structure.
  */
-export interface Fail extends Message {
+export interface Fail extends NodeMessage {
 
     /**
      * message describing the failure.
@@ -55,7 +52,7 @@ export interface Fail extends Message {
 /**
  * Result message structure.
  */
-export interface Result extends Message {
+export interface Result extends NodeMessage {
 
     /**
      * value output from the execution of the program.

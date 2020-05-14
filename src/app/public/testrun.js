@@ -7599,6 +7599,11 @@ process.umask = function() { return 0; };
 },{}],52:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.MSG_TARGET_TAB = 'testrun-target-tab';
+
+},{}],53:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.MSG_EXEC = 'testrun-exec-cli-script';
 exports.MSG_EXEC_RESULT = 'testrun-exec-cli-script-result';
 exports.MSG_EXEC_FAIL = 'testrun-exec-cli-script-error';
@@ -7649,7 +7654,7 @@ exports.isCLISafe = function (value) {
     return value.split(' ').every(function (a) { return exports.REGEX_SAFE_STRING.test(a); });
 };
 
-},{}],53:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var columns_1 = require("./view/columns");
@@ -7683,11 +7688,12 @@ var ActionColumn = /** @class */ (function () {
 }());
 exports.ActionColumn = ActionColumn;
 
-},{"./view/columns":57}],54:[function(require,module,exports){
+},{"./view/columns":58}],55:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 ///<reference path="../../../global.d.ts" />
 var nodeMessages = require("@metasansana/testrun/lib/node/message");
+var bgMessages = require("@metasansana/testrun/lib/background/message");
 var columns = require("./columns");
 var record_1 = require("@quenk/noni/lib/data/record");
 var maybe_1 = require("@quenk/noni/lib/data/maybe");
@@ -7713,13 +7719,14 @@ var Testrun = /** @class */ (function () {
         this.app = app;
         this.view = new app_1.TestrunView(this);
         this.tab = -1;
-        this.currentTab = maybe_1.nothing();
-        this.runner = browser.runtime.connectNative('testrun_native');
+        this.targetTab = maybe_1.nothing();
+        this.background = browser.runtime.connect();
+        this.node = browser.runtime.connectNative('testrun_native');
         this.values = {
             url: {
                 name: 'url',
                 label: 'App URL',
-                value: 'http://localhost:8080',
+                value: '',
                 onChange: function (e) {
                     _this.values.url.value = e.value;
                 }
@@ -7753,6 +7760,13 @@ var Testrun = /** @class */ (function () {
             }
         };
         /**
+         * handleError alerts the user and dumps an error to the console.
+         */
+        this.handleError = function (e) {
+            alert("Error: " + e.message);
+            error(e);
+        };
+        /**
          * handleMessage received from the message passing hooks.
          *
          * Messages may come from:
@@ -7772,10 +7786,15 @@ var Testrun = /** @class */ (function () {
                     break;
                 case nodeMessages.MSG_EXEC_FAIL:
                 case nodeMessages.MSG_EXEC_RESULT:
-                    if (_this.currentTab.isJust())
+                    if (_this.targetTab.isJust())
                         browser
                             .tabs
-                            .sendMessage(_this.currentTab.get().id, msg);
+                            .sendMessage(_this.targetTab.get().id, msg);
+                    break;
+                case bgMessages.MSG_TARGET_TAB:
+                    _this
+                        .updateURLFromTab(m.id)
+                        .catch(_this.handleError);
                     break;
                 default:
                     warn("Ignoring unknown message: " + JSON.stringify(msg) + ".");
@@ -7792,6 +7811,77 @@ var Testrun = /** @class */ (function () {
      */
     Testrun.prototype.isScriptPathSet = function () {
         return this.values.exec.value !== '';
+    };
+    /**
+     * createTargetTab is used to create a new tab for testing.
+     *
+     * This is only used if we detect the targetTab is not set.
+     */
+    Testrun.prototype.createTargetTab = function () {
+        var _this = this;
+        return browser
+            .tabs
+            .create({ url: this.values.url.value })
+            .then(function (tab) {
+            _this.targetTab = maybe_1.just(tab);
+            return tab;
+        });
+    };
+    /**
+     * updateURLFromTab attempts to update the target url using the tab
+     * id specified.
+     */
+    Testrun.prototype.updateURLFromTab = function (id) {
+        var _this = this;
+        return browser
+            .tabs
+            .get(id)
+            .then(function (t) {
+            if (t.url != null) {
+                _this.values.url.value = t.url;
+                _this.view.invalidate();
+            }
+        });
+    };
+    /**
+     * showResults parses the html from the results and displays it
+     * in the main UI.
+     */
+    Testrun.prototype.showResults = function (msg) {
+        var code = msg.value || '';
+        browser
+            .tabs
+            .create({
+            url: '/src/app/public/results.html'
+        })
+            .then(function (tab) {
+            return browser
+                .tabs
+                .executeScript(tab.id, {
+                file: '/build/content/initTestResultEnv.js'
+            })
+                .then(function () {
+                return browser
+                    .tabs
+                    .sendMessage(tab.id, {
+                    type: 'run',
+                    code: code
+                });
+            });
+        })
+            .catch(this.handleError);
+    };
+    /**
+     * show the application.
+     */
+    Testrun.prototype.show = function () {
+        var main = this.window.document.getElementById(exports.ID_MAIN);
+        if (main != null) {
+            main.appendChild(this.view.render());
+        }
+        else {
+            return this.handleError(new Error("Missing \"" + exports.ID_MAIN + "\" id in application document!"));
+        }
     };
     /**
      * @private
@@ -7818,42 +7908,6 @@ var Testrun = /** @class */ (function () {
         this.app.mocha.run().on('end', f);
     };
     /**
-     * showResults parses the html from the results and displays it
-     * in the main UI.
-     */
-    Testrun.prototype.showResults = function (msg) {
-        var _this = this;
-        var code = msg.value || '';
-        browser
-            .tabs
-            .create({
-            url: '/src/app/public/results.html'
-        })
-            .then(function (tab) {
-            return browser
-                .tabs
-                .executeScript(tab.id, {
-                file: '/build/content/initTestResultEnv.js'
-            })
-                .then(function () {
-                return browser
-                    .tabs
-                    .sendMessage(tab.id, {
-                    type: 'run',
-                    code: code
-                });
-            });
-        })
-            .catch(function (e) { return _this.showError(e); });
-    };
-    /**
-     * showError alerts the user and dumps an error to the console.
-     */
-    Testrun.prototype.showError = function (e) {
-        alert("Error: " + e.message);
-        error(e);
-    };
-    /**
      * runCLIScript on behalf of the running test.
      *
      * This method is the bridge between the injected script and the CLI
@@ -7869,7 +7923,7 @@ var Testrun = /** @class */ (function () {
             else if (!message_1.isCLISafe(e.args))
                 this.handleMessage(new message_1.NewFail(e.id, ERR_ARGS_UNSAFE));
             else
-                this.runner.postMessage(record_1.merge(e, {
+                this.node.postMessage(record_1.merge(e, {
                     name: this.values.exec.value + "/" + e.name
                 }));
         }
@@ -7878,15 +7932,8 @@ var Testrun = /** @class */ (function () {
      * runSuite
      */
     Testrun.prototype.runSuite = function (s) {
-        var _this = this;
-        browser.runtime.onMessage.addListener(this.handleMessage);
-        browser
-            .tabs
-            .create({ url: this.values.url.value })
-            .then(function (tab) {
-            _this.currentTab = maybe_1.just(tab);
-            return tab;
-        })
+        this
+            .createTargetTab()
             .then(function (tab) {
             return browser
                 .tabs
@@ -7902,20 +7949,16 @@ var Testrun = /** @class */ (function () {
                 });
             });
         })
-            .catch(function (e) { return _this.showError(e); });
+            .catch(this.handleError);
     };
     /**
      * run the application.
      */
     Testrun.prototype.run = function () {
-        var main = this.window.document.getElementById(exports.ID_MAIN);
-        if (main != null) {
-            main.appendChild(this.view.render());
-            this.runner.onMessage.addListener(this.handleMessage);
-        }
-        else {
-            return this.showError(new Error("Missing \"" + exports.ID_MAIN + "\" id in application document!"));
-        }
+        browser.runtime.onMessage.addListener(this.handleMessage);
+        this.node.onMessage.addListener(this.handleMessage);
+        this.background.onMessage.addListener(this.handleMessage);
+        this.show();
     };
     return Testrun;
 }());
@@ -7952,14 +7995,14 @@ var error = function (e) {
     return console.error("[Testrun]: " + e.message, e);
 };
 
-},{"./columns":53,"./view/app":56,"@metasansana/testrun/lib/node/message":52,"@quenk/noni/lib/control/monad/future":2,"@quenk/noni/lib/data/maybe":8,"@quenk/noni/lib/data/record":9}],55:[function(require,module,exports){
+},{"./columns":54,"./view/app":57,"@metasansana/testrun/lib/background/message":52,"@metasansana/testrun/lib/node/message":53,"@quenk/noni/lib/control/monad/future":2,"@quenk/noni/lib/data/maybe":8,"@quenk/noni/lib/data/record":9}],56:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var _1 = require("./");
 var app = _1.Testrun.create(window, window.opener);
 app.run();
 
-},{"./":54}],56:[function(require,module,exports){
+},{"./":55}],57:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var __document = require("@quenk/wml/lib/dom");
@@ -8136,7 +8179,7 @@ var TestrunView = /** @class */ (function () {
 }());
 exports.TestrunView = TestrunView;
 
-},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/file-input":20,"@quenk/wml-widgets/lib/control/text-field":29,"@quenk/wml-widgets/lib/data/table":37,"@quenk/wml-widgets/lib/layout/grid":41,"@quenk/wml-widgets/lib/layout/main":44,"@quenk/wml/lib/dom":49}],57:[function(require,module,exports){
+},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/file-input":20,"@quenk/wml-widgets/lib/control/text-field":29,"@quenk/wml-widgets/lib/data/table":37,"@quenk/wml-widgets/lib/layout/grid":41,"@quenk/wml-widgets/lib/layout/main":44,"@quenk/wml/lib/dom":49}],58:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var __document = require("@quenk/wml/lib/dom");
@@ -8273,4 +8316,4 @@ var ActionColumnView = /** @class */ (function () {
 }());
 exports.ActionColumnView = ActionColumnView;
 
-},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/button":17,"@quenk/wml/lib/dom":49}]},{},[55]);
+},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/button":17,"@quenk/wml/lib/dom":49}]},{},[56]);

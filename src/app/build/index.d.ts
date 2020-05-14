@@ -44,8 +44,9 @@ export declare class Testrun {
     constructor(window: Window, app: Window);
     view: View;
     tab: number;
-    currentTab: Maybe<browser.tabs.Tab>;
-    runner: browser.runtime.Port;
+    targetTab: Maybe<browser.tabs.Tab>;
+    background: browser.runtime.Port;
+    node: browser.runtime.Port;
     values: {
         url: {
             name: string;
@@ -73,6 +74,10 @@ export declare class Testrun {
         };
     };
     /**
+     * handleError alerts the user and dumps an error to the console.
+     */
+    handleError: (e: Error) => void;
+    /**
      * handleMessage received from the message passing hooks.
      *
      * Messages may come from:
@@ -89,6 +94,26 @@ export declare class Testrun {
      */
     isScriptPathSet(): boolean;
     /**
+     * createTargetTab is used to create a new tab for testing.
+     *
+     * This is only used if we detect the targetTab is not set.
+     */
+    createTargetTab(): Promise<browser.tabs.Tab>;
+    /**
+     * updateURLFromTab attempts to update the target url using the tab
+     * id specified.
+     */
+    updateURLFromTab(id: number): Promise<void>;
+    /**
+     * showResults parses the html from the results and displays it
+     * in the main UI.
+     */
+    showResults(msg: Message): void;
+    /**
+     * show the application.
+     */
+    show(): void;
+    /**
      * @private
      */
     loadFromFiles(list: File[]): void;
@@ -100,15 +125,6 @@ export declare class Testrun {
      * @private
      */
     runMocha(f: () => void): void;
-    /**
-     * showResults parses the html from the results and displays it
-     * in the main UI.
-     */
-    showResults(msg: Message): void;
-    /**
-     * showError alerts the user and dumps an error to the console.
-     */
-    showError(e: Error): void;
     /**
      * runCLIScript on behalf of the running test.
      *
