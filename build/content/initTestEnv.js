@@ -41,7 +41,7 @@
         }
     }; };
     var dispatchEvent = function (name, obj) {
-        var detail = (cloneInto != null) ?
+        var detail = (typeof cloneInto === 'function') ?
             cloneInto(obj, window) : obj;
         var evt = new CustomEvent(name, { detail: detail });
         window

@@ -73,7 +73,7 @@
 
     const dispatchEvent = (name: string, obj: object) => {
 
-        let detail = (cloneInto != null) ?
+        let detail = (typeof cloneInto === 'function') ?
             cloneInto(obj, window) : obj;
 
         let evt = new CustomEvent(name, { detail });
