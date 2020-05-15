@@ -9,15 +9,25 @@ describe('button', function () {
         });
         it('should execute cli scripts', function (done) {
             window.execCLIScript('echo', 'hello', function (e, msg) {
-                assert_1.assert(e).undefined();
-                assert_1.assert(msg).equal('hello');
-                done();
+                try {
+                    assert_1.assert(e).undefined();
+                    assert_1.assert(msg).equal('hello');
+                    done();
+                }
+                catch (e) {
+                    done(e);
+                }
             });
         });
         it('should not execute unknown cli scripts', function (done) {
             window.execCLIScript('tree', '/', function (e, _) {
-                assert_1.assert(e).not.undefined();
-                done();
+                try {
+                    assert_1.assert(e).not.undefined();
+                    done();
+                }
+                catch (e) {
+                    done(e);
+                }
             });
         });
     });

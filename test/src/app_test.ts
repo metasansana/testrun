@@ -17,11 +17,19 @@ describe('button', () => {
             window.execCLIScript('echo', 'hello',
                 (e: null | Error, msg: string) => {
 
-                    assert(e).undefined();
+                    try {
 
-                    assert(msg).equal('hello');
+                        assert(e).undefined();
 
-                    done();
+                        assert(msg).equal('hello');
+
+                        done();
+
+                    } catch (e) {
+
+                        done(e);
+
+                    }
 
                 });
 
@@ -32,9 +40,17 @@ describe('button', () => {
             window.execCLIScript('tree', '/',
                 (e: null | Error, _: string) => {
 
-                    assert(e).not.undefined();
+                    try {
 
-                    done();
+                        assert(e).not.undefined();
+
+                        done();
+
+                    } catch (e) {
+
+                        done(e);
+
+                    }
 
                 });
 
