@@ -47,6 +47,7 @@ export declare class Testrun {
     targetTab: Maybe<browser.tabs.Tab>;
     background: browser.runtime.Port;
     node: browser.runtime.Port;
+    nodeRunnerAvailable: boolean;
     values: {
         url: {
             name: string;
@@ -78,6 +79,10 @@ export declare class Testrun {
      */
     handleError: (e: Error) => void;
     /**
+     * handleNodeDisconnect handles the disconnect of the native cli runner.
+     */
+    handleNodeDisconnect: (p: browser.runtime.Port) => void;
+    /**
      * handleMessage received from the message passing hooks.
      *
      * Messages may come from:
@@ -108,6 +113,7 @@ export declare class Testrun {
      * showResults parses the html from the results and displays it
      * in the main UI.
      */
+    xshowResults(msg: Message): void;
     showResults(msg: Message): void;
     /**
      * show the application.

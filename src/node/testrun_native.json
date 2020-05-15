@@ -8,6 +8,8 @@
 
     "type": "stdio",
 
-    "allowed_extensions": ["testrun@trinistorm.org"]
+    "allowed_extensions": ["testrun@trinistorm.org"],
+
+    "allowed_origins": ["chrome-extension://testrun@trinistorm.org"]
 
 }

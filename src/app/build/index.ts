@@ -27,6 +27,7 @@ import {
     isCLISafe
 } from '@metasansana/testrun/lib/node/message';
 import { TargetTab } from '@metasansana/testrun/lib/background/message';
+import { execContentScriptFile } from '@metasansana/testrun/lib/content';
 
 import { TestrunView } from './view/app';
 
@@ -44,7 +45,11 @@ const ERR_ARGS_UNSAFE =
 const ERR_SCRIPT_PATH_NOT_SET =
     `E003: No path for cli scripts set!`;
 
-const ERR_LOAD_FILES_FAILED = `E004: Unable to load the file(s) specified!`;
+const ERR_LOAD_FILES_FAILED =
+    `E004: Unable to load the file(s) specified!`;
+
+const ERR_NODE_RUNNER_UNAVAILABLE =
+    `E005: The cli runner is unavailable!`;
 
 const MSG_TYPE_RESULTS = 'results';
 
@@ -96,6 +101,8 @@ export class Testrun {
     background = browser.runtime.connect();
 
     node = browser.runtime.connectNative('testrun_native');
+
+    nodeRunnerAvailable = true;
 
     values = {
 
@@ -178,6 +185,21 @@ export class Testrun {
 
         alert(`Error: ${e.message}`);
         error(e);
+
+    }
+
+    /**
+     * handleNodeDisconnect handles the disconnect of the native cli runner.
+     */
+    handleNodeDisconnect = (p: browser.runtime.Port) => {
+
+        this.nodeRunnerAvailable = false;
+
+        if (p.error != null)
+            this.handleError(<Error>p.error);
+
+        if (browser.runtime.lastError != null)
+            this.handleError(<Error>browser.runtime.lastError);
 
     }
 
@@ -290,6 +312,33 @@ export class Testrun {
      * showResults parses the html from the results and displays it
      * in the main UI.
      */
+    xshowResults(msg: Message): void {
+
+        let code = msg.value || '';
+
+        browser
+            .tabs
+            .create({
+
+                url: '/src/app/public/results.html'
+
+            })
+            .then(tab =>
+                execContentScriptFile(<number>tab.id,
+                    '/build/content/initTestResultEnv.js')
+                    .then(() =>
+                        browser
+                            .tabs
+                            .sendMessage(<number>tab.id, {
+
+                                type: 'run',
+
+                                code: code
+
+                            })))
+            .catch(this.handleError);
+
+    }
     showResults(msg: Message): void {
 
         let code = msg.value || '';
@@ -302,23 +351,21 @@ export class Testrun {
 
             })
             .then(tab =>
-                browser
-                    .tabs
-                    .executeScript(<number>tab.id, {
+                browser.tabs.onUpdated.addListener((id, changes) => {
 
-                        file: '/build/content/initTestResultEnv.js'
+                    if (tab.id === id)
+                        if (changes.status === 'complete')
+                            browser
+                                .tabs
+                                .sendMessage(id, {
 
-                    })
-                    .then(() =>
-                        browser
-                            .tabs
-                            .sendMessage(<number>tab.id, {
+                                    type: 'run',
 
-                                type: 'run',
+                                    code: code
 
-                                code: code
-
-                            })))
+                                })
+                                .catch(this.handleError);
+                }))
             .catch(this.handleError);
 
     }
@@ -392,6 +439,10 @@ export class Testrun {
 
             this.handleMessage(new NewFail(e.id, ERR_SCRIPT_PATH_NOT_SET));
 
+        } else if (!this.nodeRunnerAvailable) {
+
+            this.handleMessage(new NewFail(e.id, ERR_NODE_RUNNER_UNAVAILABLE));
+
         } else {
 
             if (!isCLISafe(e.name))
@@ -415,13 +466,8 @@ export class Testrun {
         this
             .createTargetTab()
             .then(tab =>
-                browser
-                    .tabs
-                    .executeScript(<number>tab.id, {
-
-                        file: '/build/content/initTestEnv.js'
-
-                    })
+                execContentScriptFile(<number>tab.id,
+                    '/build/content/initTestEnv.js')
                     .then(() =>
                         browser
                             .tabs
@@ -444,6 +490,8 @@ export class Testrun {
         browser.runtime.onMessage.addListener(this.handleMessage);
 
         this.node.onMessage.addListener(this.handleMessage);
+
+        this.node.onDisconnect.addListener(this.handleNodeDisconnect);
 
         this.background.onMessage.addListener(this.handleMessage);
 
@@ -490,4 +538,4 @@ const warn = (msg: string) =>
     console.warn(`[Testrun]: ${msg}`);
 
 const error = (e: Error) =>
-    console.error(`[Testrun]: ${e.message}`, e);
+    console.error(`[Testrun]: ${e.message}`);

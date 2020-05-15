@@ -7604,6 +7604,29 @@ exports.MSG_TARGET_TAB = 'testrun-target-tab';
 },{}],53:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SCRIPT_INIT_TEST_ENV = '/build/content/initTestEnv.js';
+exports.SCRIPT_INIT_TEST_RESULT_ENV = '/build/content/initTestResultEnv.js';
+/**
+ * execContentScriptFile executes a content script using an extension file
+ * path.
+ *
+ * This function preloads the chrome polyfill before execution.
+ */
+exports.execContentScriptFile = function (id, file) {
+    return browser
+        .tabs
+        .executeScript(id, { file: '/vendor/browser-polyfill.js' })
+        .then(function () {
+        return browser
+            .tabs
+            .executeScript(id, { file: file });
+    })
+        .then(function () { return Promise.resolve(); });
+};
+
+},{}],54:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.MSG_EXEC = 'testrun-exec-cli-script';
 exports.MSG_EXEC_RESULT = 'testrun-exec-cli-script-result';
 exports.MSG_EXEC_FAIL = 'testrun-exec-cli-script-error';
@@ -7654,7 +7677,7 @@ exports.isCLISafe = function (value) {
     return value.split(' ').every(function (a) { return exports.REGEX_SAFE_STRING.test(a); });
 };
 
-},{}],54:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var columns_1 = require("./view/columns");
@@ -7688,7 +7711,7 @@ var ActionColumn = /** @class */ (function () {
 }());
 exports.ActionColumn = ActionColumn;
 
-},{"./view/columns":58}],55:[function(require,module,exports){
+},{"./view/columns":59}],56:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 ///<reference path="../../../global.d.ts" />
@@ -7699,6 +7722,7 @@ var record_1 = require("@quenk/noni/lib/data/record");
 var maybe_1 = require("@quenk/noni/lib/data/maybe");
 var future_1 = require("@quenk/noni/lib/control/monad/future");
 var message_1 = require("@metasansana/testrun/lib/node/message");
+var content_1 = require("@metasansana/testrun/lib/content");
 var app_1 = require("./view/app");
 exports.ID_MAIN = 'main';
 exports.ID_MOCHA = 'mocha';
@@ -7708,6 +7732,7 @@ var ERR_NAME_UNSAFE = "E001: Script name must match: (" + nodeMessages.REGEX_SAF
 var ERR_ARGS_UNSAFE = "E002: Script arguments must match: (" + nodeMessages.REGEX_SAFE_STRING + ")!";
 var ERR_SCRIPT_PATH_NOT_SET = "E003: No path for cli scripts set!";
 var ERR_LOAD_FILES_FAILED = "E004: Unable to load the file(s) specified!";
+var ERR_NODE_RUNNER_UNAVAILABLE = "E005: The cli runner is unavailable!";
 var MSG_TYPE_RESULTS = 'results';
 /**
  * Testrun
@@ -7722,6 +7747,7 @@ var Testrun = /** @class */ (function () {
         this.targetTab = maybe_1.nothing();
         this.background = browser.runtime.connect();
         this.node = browser.runtime.connectNative('testrun_native');
+        this.nodeRunnerAvailable = true;
         this.values = {
             url: {
                 name: 'url',
@@ -7765,6 +7791,16 @@ var Testrun = /** @class */ (function () {
         this.handleError = function (e) {
             alert("Error: " + e.message);
             error(e);
+        };
+        /**
+         * handleNodeDisconnect handles the disconnect of the native cli runner.
+         */
+        this.handleNodeDisconnect = function (p) {
+            _this.nodeRunnerAvailable = false;
+            if (p.error != null)
+                _this.handleError(p.error);
+            if (browser.runtime.lastError != null)
+                _this.handleError(browser.runtime.lastError);
         };
         /**
          * handleMessage received from the message passing hooks.
@@ -7847,7 +7883,7 @@ var Testrun = /** @class */ (function () {
      * showResults parses the html from the results and displays it
      * in the main UI.
      */
-    Testrun.prototype.showResults = function (msg) {
+    Testrun.prototype.xshowResults = function (msg) {
         var code = msg.value || '';
         browser
             .tabs
@@ -7855,11 +7891,7 @@ var Testrun = /** @class */ (function () {
             url: '/src/app/public/results.html'
         })
             .then(function (tab) {
-            return browser
-                .tabs
-                .executeScript(tab.id, {
-                file: '/build/content/initTestResultEnv.js'
-            })
+            return content_1.execContentScriptFile(tab.id, '/build/content/initTestResultEnv.js')
                 .then(function () {
                 return browser
                     .tabs
@@ -7867,6 +7899,29 @@ var Testrun = /** @class */ (function () {
                     type: 'run',
                     code: code
                 });
+            });
+        })
+            .catch(this.handleError);
+    };
+    Testrun.prototype.showResults = function (msg) {
+        var _this = this;
+        var code = msg.value || '';
+        browser
+            .tabs
+            .create({
+            url: '/src/app/public/results.html'
+        })
+            .then(function (tab) {
+            return browser.tabs.onUpdated.addListener(function (id, changes) {
+                if (tab.id === id)
+                    if (changes.status === 'complete')
+                        browser
+                            .tabs
+                            .sendMessage(id, {
+                            type: 'run',
+                            code: code
+                        })
+                            .catch(_this.handleError);
             });
         })
             .catch(this.handleError);
@@ -7917,6 +7972,9 @@ var Testrun = /** @class */ (function () {
         if (!this.isScriptPathSet()) {
             this.handleMessage(new message_1.NewFail(e.id, ERR_SCRIPT_PATH_NOT_SET));
         }
+        else if (!this.nodeRunnerAvailable) {
+            this.handleMessage(new message_1.NewFail(e.id, ERR_NODE_RUNNER_UNAVAILABLE));
+        }
         else {
             if (!message_1.isCLISafe(e.name))
                 this.handleMessage(new message_1.NewFail(e.id, ERR_NAME_UNSAFE));
@@ -7935,11 +7993,7 @@ var Testrun = /** @class */ (function () {
         this
             .createTargetTab()
             .then(function (tab) {
-            return browser
-                .tabs
-                .executeScript(tab.id, {
-                file: '/build/content/initTestEnv.js'
-            })
+            return content_1.execContentScriptFile(tab.id, '/build/content/initTestEnv.js')
                 .then(function () {
                 return browser
                     .tabs
@@ -7957,6 +8011,7 @@ var Testrun = /** @class */ (function () {
     Testrun.prototype.run = function () {
         browser.runtime.onMessage.addListener(this.handleMessage);
         this.node.onMessage.addListener(this.handleMessage);
+        this.node.onDisconnect.addListener(this.handleNodeDisconnect);
         this.background.onMessage.addListener(this.handleMessage);
         this.show();
     };
@@ -7992,17 +8047,17 @@ var warn = function (msg) {
     return console.warn("[Testrun]: " + msg);
 };
 var error = function (e) {
-    return console.error("[Testrun]: " + e.message, e);
+    return console.error("[Testrun]: " + e.message);
 };
 
-},{"./columns":54,"./view/app":57,"@metasansana/testrun/lib/background/message":52,"@metasansana/testrun/lib/node/message":53,"@quenk/noni/lib/control/monad/future":2,"@quenk/noni/lib/data/maybe":8,"@quenk/noni/lib/data/record":9}],56:[function(require,module,exports){
+},{"./columns":55,"./view/app":58,"@metasansana/testrun/lib/background/message":52,"@metasansana/testrun/lib/content":53,"@metasansana/testrun/lib/node/message":54,"@quenk/noni/lib/control/monad/future":2,"@quenk/noni/lib/data/maybe":8,"@quenk/noni/lib/data/record":9}],57:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var _1 = require("./");
 var app = _1.Testrun.create(window, window.opener);
 app.run();
 
-},{"./":55}],57:[function(require,module,exports){
+},{"./":56}],58:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var __document = require("@quenk/wml/lib/dom");
@@ -8179,7 +8234,7 @@ var TestrunView = /** @class */ (function () {
 }());
 exports.TestrunView = TestrunView;
 
-},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/file-input":20,"@quenk/wml-widgets/lib/control/text-field":29,"@quenk/wml-widgets/lib/data/table":37,"@quenk/wml-widgets/lib/layout/grid":41,"@quenk/wml-widgets/lib/layout/main":44,"@quenk/wml/lib/dom":49}],58:[function(require,module,exports){
+},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/file-input":20,"@quenk/wml-widgets/lib/control/text-field":29,"@quenk/wml-widgets/lib/data/table":37,"@quenk/wml-widgets/lib/layout/grid":41,"@quenk/wml-widgets/lib/layout/main":44,"@quenk/wml/lib/dom":49}],59:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var __document = require("@quenk/wml/lib/dom");
@@ -8316,4 +8371,4 @@ var ActionColumnView = /** @class */ (function () {
 }());
 exports.ActionColumnView = ActionColumnView;
 
-},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/button":17,"@quenk/wml/lib/dom":49}]},{},[56]);
+},{"@quenk/noni/lib/data/maybe":8,"@quenk/wml-widgets/lib/control/button":17,"@quenk/wml/lib/dom":49}]},{},[57]);

@@ -8,6 +8,7 @@ var record_1 = require("@quenk/noni/lib/data/record");
 var maybe_1 = require("@quenk/noni/lib/data/maybe");
 var future_1 = require("@quenk/noni/lib/control/monad/future");
 var message_1 = require("@metasansana/testrun/lib/node/message");
+var content_1 = require("@metasansana/testrun/lib/content");
 var app_1 = require("./view/app");
 exports.ID_MAIN = 'main';
 exports.ID_MOCHA = 'mocha';
@@ -17,6 +18,7 @@ var ERR_NAME_UNSAFE = "E001: Script name must match: (" + nodeMessages.REGEX_SAF
 var ERR_ARGS_UNSAFE = "E002: Script arguments must match: (" + nodeMessages.REGEX_SAFE_STRING + ")!";
 var ERR_SCRIPT_PATH_NOT_SET = "E003: No path for cli scripts set!";
 var ERR_LOAD_FILES_FAILED = "E004: Unable to load the file(s) specified!";
+var ERR_NODE_RUNNER_UNAVAILABLE = "E005: The cli runner is unavailable!";
 var MSG_TYPE_RESULTS = 'results';
 /**
  * Testrun
@@ -31,6 +33,7 @@ var Testrun = /** @class */ (function () {
         this.targetTab = maybe_1.nothing();
         this.background = browser.runtime.connect();
         this.node = browser.runtime.connectNative('testrun_native');
+        this.nodeRunnerAvailable = true;
         this.values = {
             url: {
                 name: 'url',
@@ -74,6 +77,16 @@ var Testrun = /** @class */ (function () {
         this.handleError = function (e) {
             alert("Error: " + e.message);
             error(e);
+        };
+        /**
+         * handleNodeDisconnect handles the disconnect of the native cli runner.
+         */
+        this.handleNodeDisconnect = function (p) {
+            _this.nodeRunnerAvailable = false;
+            if (p.error != null)
+                _this.handleError(p.error);
+            if (browser.runtime.lastError != null)
+                _this.handleError(browser.runtime.lastError);
         };
         /**
          * handleMessage received from the message passing hooks.
@@ -156,7 +169,7 @@ var Testrun = /** @class */ (function () {
      * showResults parses the html from the results and displays it
      * in the main UI.
      */
-    Testrun.prototype.showResults = function (msg) {
+    Testrun.prototype.xshowResults = function (msg) {
         var code = msg.value || '';
         browser
             .tabs
@@ -164,11 +177,7 @@ var Testrun = /** @class */ (function () {
             url: '/src/app/public/results.html'
         })
             .then(function (tab) {
-            return browser
-                .tabs
-                .executeScript(tab.id, {
-                file: '/build/content/initTestResultEnv.js'
-            })
+            return content_1.execContentScriptFile(tab.id, '/build/content/initTestResultEnv.js')
                 .then(function () {
                 return browser
                     .tabs
@@ -176,6 +185,29 @@ var Testrun = /** @class */ (function () {
                     type: 'run',
                     code: code
                 });
+            });
+        })
+            .catch(this.handleError);
+    };
+    Testrun.prototype.showResults = function (msg) {
+        var _this = this;
+        var code = msg.value || '';
+        browser
+            .tabs
+            .create({
+            url: '/src/app/public/results.html'
+        })
+            .then(function (tab) {
+            return browser.tabs.onUpdated.addListener(function (id, changes) {
+                if (tab.id === id)
+                    if (changes.status === 'complete')
+                        browser
+                            .tabs
+                            .sendMessage(id, {
+                            type: 'run',
+                            code: code
+                        })
+                            .catch(_this.handleError);
             });
         })
             .catch(this.handleError);
@@ -226,6 +258,9 @@ var Testrun = /** @class */ (function () {
         if (!this.isScriptPathSet()) {
             this.handleMessage(new message_1.NewFail(e.id, ERR_SCRIPT_PATH_NOT_SET));
         }
+        else if (!this.nodeRunnerAvailable) {
+            this.handleMessage(new message_1.NewFail(e.id, ERR_NODE_RUNNER_UNAVAILABLE));
+        }
         else {
             if (!message_1.isCLISafe(e.name))
                 this.handleMessage(new message_1.NewFail(e.id, ERR_NAME_UNSAFE));
@@ -244,11 +279,7 @@ var Testrun = /** @class */ (function () {
         this
             .createTargetTab()
             .then(function (tab) {
-            return browser
-                .tabs
-                .executeScript(tab.id, {
-                file: '/build/content/initTestEnv.js'
-            })
+            return content_1.execContentScriptFile(tab.id, '/build/content/initTestEnv.js')
                 .then(function () {
                 return browser
                     .tabs
@@ -266,6 +297,7 @@ var Testrun = /** @class */ (function () {
     Testrun.prototype.run = function () {
         browser.runtime.onMessage.addListener(this.handleMessage);
         this.node.onMessage.addListener(this.handleMessage);
+        this.node.onDisconnect.addListener(this.handleNodeDisconnect);
         this.background.onMessage.addListener(this.handleMessage);
         this.show();
     };
@@ -301,6 +333,6 @@ var warn = function (msg) {
     return console.warn("[Testrun]: " + msg);
 };
 var error = function (e) {
-    return console.error("[Testrun]: " + e.message, e);
+    return console.error("[Testrun]: " + e.message);
 };
 //# sourceMappingURL=index.js.map
